@@ -462,7 +462,8 @@ find_queue_families :: proc(device: vk.PhysicalDevice, surface: vk.SurfaceKHR) -
 	vk.GetPhysicalDeviceQueueFamilyProperties(device, &count, raw_data(families))
 
 	for family, i in families {
-		if .GRAPHICS in family.queueFlags {
+		// TODO: create separate compute queue
+		if .GRAPHICS in family.queueFlags || .COMPUTE in family.queueFlags {
 			ids.graphics = u32(i)
 		}
 

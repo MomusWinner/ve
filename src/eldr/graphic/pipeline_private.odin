@@ -42,7 +42,6 @@ _create_pipeline :: proc(
 		basePipelineIndex   = -1,
 	}
 
-
 	pipeline := new(Pipeline, allocator)
 	must(vk.CreateGraphicsPipelines(g.device, 0, 1, &pipeline_info, nil, &pipeline.pipeline))
 	pipeline.create_info = create_info
@@ -72,6 +71,7 @@ _copy_create_pipeline_info :: proc(info: ^CreatePipelineInfo, allocator := conte
 		info.vertex_input_description.attribute_descriptions,
 	)
 
+	copy_info.input_assembly = info.input_assembly
 	copy_info.rasterizer = info.rasterizer
 	copy_info.multisampling = info.multisampling
 	copy_info.depth_stencil = info.depth_stencil
@@ -192,7 +192,7 @@ _create_vertex_input_info :: proc(
 	bind_description := new(VertexInputBindingDescription, allocator)
 	bind_description.binding = 0
 	bind_description.stride = size_of(Vertex)
-	bind_description.inputRate = .VERTEX
+	bind_description.inputRate = create_info.vertex_input_description.input_rate
 
 	vertex_input_info := new(vk.PipelineVertexInputStateCreateInfo, allocator)
 	vertex_input_info.sType = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
@@ -214,11 +214,10 @@ _create_input_assembly_info :: proc(
 ) -> ^vk.PipelineInputAssemblyStateCreateInfo {
 	input_assembly := new(vk.PipelineInputAssemblyStateCreateInfo, allocator)
 	input_assembly.sType = .PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
-	input_assembly.topology = .TRIANGLE_LIST
+	input_assembly.topology = create_info.input_assembly.topology
 
 	return input_assembly
 }
-
 
 _create_viewport_info :: proc(
 	g: ^Graphic,
@@ -240,10 +239,10 @@ _create_rasterizer :: proc(
 ) -> ^vk.PipelineRasterizationStateCreateInfo {
 	rasterizer := new(vk.PipelineRasterizationStateCreateInfo, allocator)
 	rasterizer.sType = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO
-	rasterizer.polygonMode = .FILL
-	rasterizer.lineWidth = 1
-	rasterizer.cullMode = {}
-	rasterizer.frontFace = .CLOCKWISE
+	rasterizer.polygonMode = create_info.rasterizer.polygonMode
+	rasterizer.lineWidth = create_info.rasterizer.lineWidth
+	rasterizer.cullMode = create_info.rasterizer.cullMode
+	rasterizer.frontFace = create_info.rasterizer.frontFace
 
 	return rasterizer
 }
@@ -260,7 +259,6 @@ _create_multisampling_info :: proc(
 
 	return multisampling
 }
-
 
 _create_color_blend_info :: proc(
 	g: ^Graphic,
@@ -285,15 +283,15 @@ _create_depth_stencil_info :: proc(
 ) -> ^vk.PipelineDepthStencilStateCreateInfo {
 	depth_stencil := new(vk.PipelineDepthStencilStateCreateInfo, context.temp_allocator)
 	depth_stencil.sType = .PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO
-	depth_stencil.depthTestEnable = true
-	depth_stencil.depthWriteEnable = true
-	depth_stencil.depthCompareOp = .LESS
-	depth_stencil.depthBoundsTestEnable = false
-	depth_stencil.minDepthBounds = 0
-	depth_stencil.maxDepthBounds = 0
-	depth_stencil.stencilTestEnable = false
-	depth_stencil.front = {}
-	depth_stencil.back = {}
+	depth_stencil.depthTestEnable = create_info.depth_stencil.depthTestEnable
+	depth_stencil.depthWriteEnable = create_info.depth_stencil.depthWriteEnable
+	depth_stencil.depthCompareOp = create_info.depth_stencil.depthCompareOp
+	depth_stencil.depthBoundsTestEnable = create_info.depth_stencil.depthBoundsTestEnable
+	depth_stencil.minDepthBounds = create_info.depth_stencil.minDepthBounds
+	depth_stencil.maxDepthBounds = create_info.depth_stencil.maxDepthBounds
+	depth_stencil.stencilTestEnable = create_info.depth_stencil.stencilTestEnable
+	depth_stencil.front = create_info.depth_stencil.front
+	depth_stencil.back = create_info.depth_stencil.back
 
 	return depth_stencil
 }
@@ -317,15 +315,15 @@ _create_pipeline_layout :: proc(
 }
 
 _create_descriptor_pool :: proc(g: ^Graphic) {
-	POOL_SIZE :: 2
-	pool_sizes := [POOL_SIZE]vk.DescriptorPoolSize {
+	pool_sizes := [?]vk.DescriptorPoolSize {
 		vk.DescriptorPoolSize{type = .UNIFORM_BUFFER, descriptorCount = UNIFORM_DESCRIPTOR_MAX},
 		vk.DescriptorPoolSize{type = .COMBINED_IMAGE_SAMPLER, descriptorCount = IMAGE_SAMPLER_DESCRIPTOR_MAX},
+		vk.DescriptorPoolSize{type = .STORAGE_BUFFER, descriptorCount = STORAGE_DESCRIPTOR_MAX},
 	}
 
 	poolInfo := vk.DescriptorPoolCreateInfo {
 		sType         = .DESCRIPTOR_POOL_CREATE_INFO,
-		poolSizeCount = POOL_SIZE,
+		poolSizeCount = len(pool_sizes),
 		pPoolSizes    = raw_data(&pool_sizes),
 		maxSets       = DESCRIPTOR_SET_MAX,
 	}
@@ -378,6 +376,21 @@ _create_descriptor_set :: proc(
 				pImageInfo      = descriptor_image_info,
 			}
 		case UniformBuffer:
+			descriptor_buffer_info := new(vk.DescriptorBufferInfo, context.temp_allocator)
+			descriptor_buffer_info.buffer = r.buffer
+			descriptor_buffer_info.offset = 0
+			descriptor_buffer_info.range = cast(vk.DeviceSize)vk.WHOLE_SIZE
+
+			write_descriptor_sets[i] = vk.WriteDescriptorSet {
+				sType           = .WRITE_DESCRIPTOR_SET,
+				dstSet          = descriptor_set,
+				dstBinding      = binding.binding,
+				descriptorType  = binding.descriptor_type,
+				dstArrayElement = 0,
+				descriptorCount = binding.descriptor_count,
+				pBufferInfo     = descriptor_buffer_info,
+			}
+		case Buffer:
 			descriptor_buffer_info := new(vk.DescriptorBufferInfo, context.temp_allocator)
 			descriptor_buffer_info.buffer = r.buffer
 			descriptor_buffer_info.offset = 0

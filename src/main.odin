@@ -91,6 +91,8 @@ main :: proc() {
 
 	eldr.init_graphic(e, window)
 
+	particle_renderer := gfx.particle_new(e.g)
+
 	texture := eldr.load_texture(e, "./assets/room.png")
 
 	defer eldr.unload_texture(e, &texture)
@@ -126,8 +128,10 @@ main :: proc() {
 
 		dt = glfw.GetTime() - last_time
 		last_time = glfw.GetTime()
-		// log.info("FPS: ", 1 / dt)
+		log.info("FPS: ", 1 / dt)
 
+		gfx.particle_update_uniform_buffer(particle_renderer, cast(f32)dt)
+		gfx.particle_compute(particle_renderer)
 
 		gfx.begin_render(e.g)
 		// Begin gfx. ------------------------------
@@ -143,18 +147,21 @@ main :: proc() {
 		}
 		vk.CmdSetScissor(e.g.command_buffer, 0, 1, &scissor)
 
-		gfx.bind_pipeline(e.g, "default_pipeline")
+		gfx.particle_draw(particle_renderer)
+		// gfx.bind_pipeline(e.g, "default_pipeline")
+		//
+		// offset := vk.DeviceSize{}
+		// vk.CmdBindVertexBuffers(e.g.command_buffer, 0, 1, &model.vbo.buffer, &offset)
+		// vk.CmdBindIndexBuffer(e.g.command_buffer, model.ebo.buffer, 0, .UINT16)
+		//
+		// gfx.bind_descriptor_set(e.g, "default_pipeline", &descriptor_set)
+		// // vk.CmdDraw(e.g.command_buffer, 3, 1, 0, 0)
+		// vk.CmdDrawIndexed(e.g.command_buffer, cast(u32)len(model.indices), 1, 0, 0, 0)
 
-		offset := vk.DeviceSize{}
-		vk.CmdBindVertexBuffers(e.g.command_buffer, 0, 1, &model.vbo.buffer, &offset)
-		vk.CmdBindIndexBuffer(e.g.command_buffer, model.ebo.buffer, 0, .UINT16)
-
-		gfx.bind_descriptor_set(e.g, "default_pipeline", &descriptor_set)
-		// vk.CmdDraw(e.g.command_buffer, 3, 1, 0, 0)
-		vk.CmdDrawIndexed(e.g.command_buffer, cast(u32)len(model.indices), 1, 0, 0, 0)
 
 		// End gfx. ------------------------------
-		gfx.end_render(e.g)
+		gfx.end_render(e.g, []vk.Semaphore{particle_renderer.semaphore}, {{.VERTEX_INPUT}})
+		// gfx.end_render(e.g, []vk.Semaphore{}, {})
 	}
 	vk.DeviceWaitIdle(e.g.device)
 	log.info("Successfuly close")

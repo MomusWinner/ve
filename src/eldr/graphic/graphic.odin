@@ -22,6 +22,7 @@ DEVICE_EXTENSIONS := []cstring {
 
 UNIFORM_DESCRIPTOR_MAX :: 30
 IMAGE_SAMPLER_DESCRIPTOR_MAX :: 30
+STORAGE_DESCRIPTOR_MAX :: 30
 DESCRIPTOR_SET_MAX :: 30
 
 vec2 :: common.vec2
@@ -58,6 +59,7 @@ PipelineSetBindingInfo :: struct {
 PipelineResource :: union {
 	Texture,
 	UniformBuffer,
+	Buffer,
 }
 
 PipelineStageInfo :: struct {
@@ -75,6 +77,7 @@ CreatePipelineInfo :: struct {
 	set_infos:                []PipelineSetInfo,
 	stage_infos:              []PipelineStageInfo,
 	vertex_input_description: struct {
+		input_rate:             vk.VertexInputRate,
 		binding_description:    VertexInputBindingDescription,
 		attribute_descriptions: []VertexInputAttributeDescription,
 	},
@@ -236,7 +239,7 @@ begin_render :: proc(g: ^Graphic) -> BeginRenderError {
 	return .None
 }
 
-end_render :: proc(g: ^Graphic) {
+end_render :: proc(g: ^Graphic, wait_semaphores: []vk.Semaphore, wait_stages: []vk.PipelineStageFlags) {
 	if !g.render_started {
 		log.error("Call begin_render() before end_render()")
 	}
@@ -244,11 +247,18 @@ end_render :: proc(g: ^Graphic) {
 	vk.CmdEndRenderPass(g.command_buffer)
 	must(vk.EndCommandBuffer(g.command_buffer))
 
+	// wait_semaphores := append(&wait_semaphores, g.image_available_semaphore)
+	required_wait_semaphores := concat(wait_semaphores, []vk.Semaphore{g.image_available_semaphore})
+	defer delete(required_wait_semaphores)
+
+	required_wait_stages := concat(wait_stages, []vk.PipelineStageFlags{{.COLOR_ATTACHMENT_OUTPUT}})
+	defer delete(required_wait_stages)
+
 	submit_info := vk.SubmitInfo {
 		sType                = .SUBMIT_INFO,
-		waitSemaphoreCount   = 1,
-		pWaitSemaphores      = &g.image_available_semaphore, //&submit_wait_semaphore,
-		pWaitDstStageMask    = &vk.PipelineStageFlags{.COLOR_ATTACHMENT_OUTPUT},
+		waitSemaphoreCount   = cast(u32)len(required_wait_semaphores),
+		pWaitSemaphores      = raw_data(required_wait_semaphores),
+		pWaitDstStageMask    = raw_data(required_wait_stages),
 		commandBufferCount   = 1,
 		pCommandBuffers      = &g.command_buffer,
 		signalSemaphoreCount = 1,

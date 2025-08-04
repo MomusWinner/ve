@@ -1,7 +1,8 @@
 odin run ./src -out=Craftorio_debug \
- 	-vet-tabs \
 	-debug \
 	$*
+
+# -vet-tabs \
 
 #-vet-unused-imports\
 

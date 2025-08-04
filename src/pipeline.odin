@@ -56,7 +56,11 @@ create_default_pipeline :: proc(e: ^eldr.Eldr) {
 	create_info := gfx.CreatePipelineInfo {
 		name = "default_pipeline",
 		set_infos = set_infos,
-		vertex_input_description = {binding_description = vert_bind, attribute_descriptions = vert_attr[:]},
+		vertex_input_description = {
+			input_rate = .VERTEX,
+			binding_description = vert_bind,
+			attribute_descriptions = vert_attr[:],
+		},
 		stage_infos = []gfx.PipelineStageInfo {
 			gfx.PipelineStageInfo{stage = {.VERTEX}, shader_path = "assets/vert.spv"},
 			gfx.PipelineStageInfo{stage = {.FRAGMENT}, shader_path = "assets/frag.spv"},
