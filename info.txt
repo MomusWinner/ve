@@ -1,0 +1,41 @@
+src/ 
+/engine
+  /render
+  /utils
+  /math
+  /esc
+  /resource_manager
+
+  engine.odin <- compose main systems and manager application
+
+import resources
+game.odin
+game_initialization.odin
+character.odin
+world.odin
+math.odin <- bind engine math
+
+Engine :: struct {
+	Renderer Renderer
+	ResourceManager resourceManager
+	Editor maby
+	Sound
+	Input
+}
+
+render.Draw(Engine.Render, vertice)
+engine.Render_Draw(Engine.Render, vertices)
+
+engine.Draw(vertices)
+	
+Engine_Draw(engine, vertices: []Vertex) {
+render.Draw(engine.Render, vertices)
+}
+
+
+Game :: struct {
+	Engine e
+	world ECSWorld
+	game GameUI
+	save SaveManager
+}

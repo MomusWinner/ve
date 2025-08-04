@@ -1,1 +1,0 @@
-odin run . -out=Craftorio $*

@@ -1,0 +1,12 @@
+1. complete vulkan tutorial
+2. refactor renderer
+3. push the changes to github
+4. add vulkan memory allocator (vma) library
+5. implement postprocessing and maby add a stencil buffer
+6. add gamma correction
+7. write a minimalistic ECS library for odin
+8. implement world generation (like Minecraft)
+
+
+// TODO
+- the swapchain, the frame buffer and the depth/stencil buffer dendend on each other
