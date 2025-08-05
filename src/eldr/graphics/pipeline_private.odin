@@ -1,12 +1,12 @@
 #+private
-package graphic
+package graphics
 
 import "core:log"
 import vk "vendor:vulkan"
 
 _create_pipeline :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.allocator,
 ) -> (
 	^Pipeline,
@@ -51,19 +51,22 @@ _create_pipeline :: proc(
 	return pipeline, true
 }
 
-_copy_create_pipeline_info :: proc(info: ^CreatePipelineInfo, allocator := context.allocator) -> ^CreatePipelineInfo {
-	copy_info := new(CreatePipelineInfo, allocator)
+_copy_create_pipeline_info :: proc(
+	info: ^Create_Pipeline_Info,
+	allocator := context.allocator,
+) -> ^Create_Pipeline_Info {
+	copy_info := new(Create_Pipeline_Info, allocator)
 	copy_info.name = info.name
 
-	copy_info.set_infos = make([]PipelineSetInfo, len(info.set_infos))
+	copy_info.set_infos = make([]Pipeline_Set_Info, len(info.set_infos))
 	copy(copy_info.set_infos, info.set_infos)
 
-	copy_info.stage_infos = make([]PipelineStageInfo, len(info.stage_infos))
+	copy_info.stage_infos = make([]Pipeline_Stage_Info, len(info.stage_infos))
 	copy(copy_info.stage_infos, info.stage_infos)
 
 	copy_info.vertex_input_description = info.vertex_input_description
 	copy_info.vertex_input_description.attribute_descriptions = make(
-		[]VertexInputAttributeDescription,
+		[]Vertex_Input_Attribute_Description,
 		len(info.vertex_input_description.attribute_descriptions),
 	)
 	copy(
@@ -79,7 +82,7 @@ _copy_create_pipeline_info :: proc(info: ^CreatePipelineInfo, allocator := conte
 	return copy_info
 }
 
-_destroy_create_pipeline_info :: proc(info: ^CreatePipelineInfo) {
+_destroy_create_pipeline_info :: proc(info: ^Create_Pipeline_Info) {
 	delete(info.set_infos)
 	delete(info.stage_infos)
 	delete(info.vertex_input_description.attribute_descriptions)
@@ -87,8 +90,8 @@ _destroy_create_pipeline_info :: proc(info: ^CreatePipelineInfo) {
 }
 
 _set_infos_to_descriptor_set_layouts :: proc(
-	g: ^Graphic,
-	set_infos: []PipelineSetInfo,
+	g: ^Graphics,
+	set_infos: []Pipeline_Set_Info,
 	allocator := context.allocator,
 ) -> []vk.DescriptorSetLayout {
 	descriptor_set_layouts := make([]vk.DescriptorSetLayout, len(set_infos))
@@ -98,7 +101,7 @@ _set_infos_to_descriptor_set_layouts :: proc(
 	return descriptor_set_layouts
 }
 
-_set_info_to_descriptor_set_layout :: proc(g: ^Graphic, set_info: PipelineSetInfo) -> vk.DescriptorSetLayout {
+_set_info_to_descriptor_set_layout :: proc(g: ^Graphics, set_info: Pipeline_Set_Info) -> vk.DescriptorSetLayout {
 	descriptor_bindings := make([dynamic]vk.DescriptorSetLayoutBinding, context.temp_allocator)
 
 	for binding in set_info.binding_infos {
@@ -130,13 +133,13 @@ _set_info_to_descriptor_set_layout :: proc(g: ^Graphic, set_info: PipelineSetInf
 	return descriptor_set_layout
 }
 
-_destroy_descriptor_set_layout :: proc(g: ^Graphic, descriptor_set_layout: vk.DescriptorSetLayout) {
+_destroy_descriptor_set_layout :: proc(g: ^Graphics, descriptor_set_layout: vk.DescriptorSetLayout) {
 	vk.DestroyDescriptorSetLayout(g.device, descriptor_set_layout, nil)
 }
 
 _create_shader_stages :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> (
 	[]vk.PipelineShaderStageCreateInfo,
@@ -161,15 +164,15 @@ _create_shader_stages :: proc(
 	return shader_stages, true
 }
 
-_destroy_shader_stages :: proc(g: ^Graphic, shader_stages: []vk.PipelineShaderStageCreateInfo) {
+_destroy_shader_stages :: proc(g: ^Graphics, shader_stages: []vk.PipelineShaderStageCreateInfo) {
 	for shader_stage in shader_stages {
 		vk.DestroyShaderModule(g.device, shader_stage.module, nil)
 	}
 }
 
 _create_dynamic_info :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineDynamicStateCreateInfo {
 	dynamic_states := make([]vk.DynamicState, 2, allocator)
@@ -185,11 +188,11 @@ _create_dynamic_info :: proc(
 }
 
 _create_vertex_input_info :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineVertexInputStateCreateInfo {
-	bind_description := new(VertexInputBindingDescription, allocator)
+	bind_description := new(Vertex_Input_Binding_Description, allocator)
 	bind_description.binding = 0
 	bind_description.stride = size_of(Vertex)
 	bind_description.inputRate = create_info.vertex_input_description.input_rate
@@ -208,8 +211,8 @@ _create_vertex_input_info :: proc(
 }
 
 _create_input_assembly_info :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineInputAssemblyStateCreateInfo {
 	input_assembly := new(vk.PipelineInputAssemblyStateCreateInfo, allocator)
@@ -220,8 +223,8 @@ _create_input_assembly_info :: proc(
 }
 
 _create_viewport_info :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineViewportStateCreateInfo {
 	viewport_state := new(vk.PipelineViewportStateCreateInfo, allocator)
@@ -233,8 +236,8 @@ _create_viewport_info :: proc(
 }
 
 _create_rasterizer :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineRasterizationStateCreateInfo {
 	rasterizer := new(vk.PipelineRasterizationStateCreateInfo, allocator)
@@ -248,8 +251,8 @@ _create_rasterizer :: proc(
 }
 
 _create_multisampling_info :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineMultisampleStateCreateInfo {
 	multisampling := new(vk.PipelineMultisampleStateCreateInfo, allocator)
@@ -261,8 +264,8 @@ _create_multisampling_info :: proc(
 }
 
 _create_color_blend_info :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineColorBlendStateCreateInfo {
 	color_blend_attachment := new(vk.PipelineColorBlendAttachmentState, context.temp_allocator)
@@ -277,8 +280,8 @@ _create_color_blend_info :: proc(
 }
 
 _create_depth_stencil_info :: proc(
-	g: ^Graphic,
-	create_info: ^CreatePipelineInfo,
+	g: ^Graphics,
+	create_info: ^Create_Pipeline_Info,
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineDepthStencilStateCreateInfo {
 	depth_stencil := new(vk.PipelineDepthStencilStateCreateInfo, context.temp_allocator)
@@ -297,7 +300,7 @@ _create_depth_stencil_info :: proc(
 }
 
 _create_pipeline_layout :: proc(
-	g: ^Graphic,
+	g: ^Graphics,
 	descriptor_set_layouts: []vk.DescriptorSetLayout,
 	allocator := context.allocator,
 ) -> vk.PipelineLayout {
@@ -314,7 +317,7 @@ _create_pipeline_layout :: proc(
 	return layout
 }
 
-_create_descriptor_pool :: proc(g: ^Graphic) {
+_create_descriptor_pool :: proc(g: ^Graphics) {
 	pool_sizes := [?]vk.DescriptorPoolSize {
 		vk.DescriptorPoolSize{type = .UNIFORM_BUFFER, descriptorCount = UNIFORM_DESCRIPTOR_MAX},
 		vk.DescriptorPoolSize{type = .COMBINED_IMAGE_SAMPLER, descriptorCount = IMAGE_SAMPLER_DESCRIPTOR_MAX},
@@ -331,15 +334,15 @@ _create_descriptor_pool :: proc(g: ^Graphic) {
 	must(vk.CreateDescriptorPool(g.device, &poolInfo, nil, &g.descriptor_pool), "failed to create descriptor pool!")
 }
 
-_destroy_descriptor_pool :: proc(g: ^Graphic) {
+_destroy_descriptor_pool :: proc(g: ^Graphics) {
 	vk.DestroyDescriptorPool(g.device, g.descriptor_pool, nil)
 }
 
 _create_descriptor_set :: proc(
-	g: ^Graphic,
+	g: ^Graphics,
 	pipeline: ^Pipeline,
 	set_index: int,
-	resources: []PipelineResource,
+	resources: []Pipeline_Resource,
 ) -> vk.DescriptorSet {
 	set_info := pipeline.create_info.set_infos[set_index]
 	descripotr_set_layout := pipeline.descriptor_set_layouts[set_index]
@@ -375,7 +378,7 @@ _create_descriptor_set :: proc(
 				descriptorCount = binding.descriptor_count,
 				pImageInfo      = descriptor_image_info,
 			}
-		case UniformBuffer:
+		case Uniform_Buffer:
 			descriptor_buffer_info := new(vk.DescriptorBufferInfo, context.temp_allocator)
 			descriptor_buffer_info.buffer = r.buffer
 			descriptor_buffer_info.offset = 0
@@ -412,7 +415,7 @@ _create_descriptor_set :: proc(
 	return descriptor_set
 }
 
-_reload_pipeline :: proc(g: ^Graphic, pipeline: ^Pipeline) {
+_reload_pipeline :: proc(g: ^Graphics, pipeline: ^Pipeline) {
 	vk.DestroyPipeline(g.device, pipeline.pipeline, nil)
 
 	create_info := pipeline.create_info

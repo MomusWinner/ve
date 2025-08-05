@@ -1,4 +1,4 @@
-package graphic
+package graphics
 
 import vk "vendor:vulkan"
 

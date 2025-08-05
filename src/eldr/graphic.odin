@@ -1,13 +1,13 @@
 package eldr
 
 import "core:log"
-import gfx "graphic"
+import gfx "graphics"
 import imp "importer"
 import "vendor:glfw"
 import vk "vendor:vulkan"
 
 init_graphic :: proc(e: ^Eldr, window: glfw.WindowHandle) {
-	e.g = new(gfx.Graphic)
+	e.g = new(gfx.Graphics)
 	gfx.set_logger(context.logger)
 	gfx.init_graphic(e.g, window)
 }

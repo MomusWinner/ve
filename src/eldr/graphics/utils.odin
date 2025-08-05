@@ -1,4 +1,4 @@
-package graphic
+package graphics
 
 concat :: proc(a: []$T, b: []T) -> []T {
 	result := make([]T, len(a) + len(b))

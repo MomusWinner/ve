@@ -16,7 +16,7 @@ import "vendor:glfw"
 import vk "vendor:vulkan"
 
 import "eldr"
-import gfx "eldr/graphic"
+import gfx "eldr/graphics"
 
 g_ctx: runtime.Context
 
@@ -58,6 +58,7 @@ main :: proc() {
 	}
 
 	context.logger = log.create_console_logger()
+	defer log.destroy_console_logger(context.logger)
 	g_ctx = context
 
 	// TODO: update vendor bindings to glfw 3.4 and use this to set a custom allocator.
@@ -91,8 +92,8 @@ main :: proc() {
 
 	eldr.init_graphic(e, window)
 
-	particle_renderer := gfx.particle_new(e.g)
-
+	// particle_renderer := gfx.particle_new(e.g)
+	//
 	texture := eldr.load_texture(e, "./assets/room.png")
 
 	defer eldr.unload_texture(e, &texture)
@@ -128,10 +129,10 @@ main :: proc() {
 
 		dt = glfw.GetTime() - last_time
 		last_time = glfw.GetTime()
-		log.info("FPS: ", 1 / dt)
+		//log.info("FPS: ", 1 / dt)
 
-		gfx.particle_update_uniform_buffer(particle_renderer, cast(f32)dt)
-		gfx.particle_compute(particle_renderer)
+		// gfx.particle_update_uniform_buffer(particle_renderer, cast(f32)dt)
+		// gfx.particle_compute(particle_renderer)
 
 		gfx.begin_render(e.g)
 		// Begin gfx. ------------------------------
@@ -147,21 +148,21 @@ main :: proc() {
 		}
 		vk.CmdSetScissor(e.g.command_buffer, 0, 1, &scissor)
 
-		gfx.particle_draw(particle_renderer)
-		// gfx.bind_pipeline(e.g, "default_pipeline")
-		//
-		// offset := vk.DeviceSize{}
-		// vk.CmdBindVertexBuffers(e.g.command_buffer, 0, 1, &model.vbo.buffer, &offset)
-		// vk.CmdBindIndexBuffer(e.g.command_buffer, model.ebo.buffer, 0, .UINT16)
-		//
-		// gfx.bind_descriptor_set(e.g, "default_pipeline", &descriptor_set)
-		// // vk.CmdDraw(e.g.command_buffer, 3, 1, 0, 0)
-		// vk.CmdDrawIndexed(e.g.command_buffer, cast(u32)len(model.indices), 1, 0, 0, 0)
+		//gfx.particle_draw(particle_renderer)
+		gfx.bind_pipeline(e.g, "default_pipeline")
+
+		offset := vk.DeviceSize{}
+		vk.CmdBindVertexBuffers(e.g.command_buffer, 0, 1, &model.vbo.buffer, &offset)
+		vk.CmdBindIndexBuffer(e.g.command_buffer, model.ebo.buffer, 0, .UINT16)
+
+		gfx.bind_descriptor_set(e.g, "default_pipeline", &descriptor_set)
+		// vk.CmdDraw(e.g.command_buffer, 3, 1, 0, 0)
+		vk.CmdDrawIndexed(e.g.command_buffer, cast(u32)len(model.indices), 1, 0, 0, 0)
 
 
 		// End gfx. ------------------------------
-		gfx.end_render(e.g, []vk.Semaphore{particle_renderer.semaphore}, {{.VERTEX_INPUT}})
-		// gfx.end_render(e.g, []vk.Semaphore{}, {})
+		// gfx.end_render(e.g, []vk.Semaphore{particle_renderer.semaphore}, {{.VERTEX_INPUT}})
+		gfx.end_render(e.g, []vk.Semaphore{}, {})
 	}
 	vk.DeviceWaitIdle(e.g.device)
 	log.info("Successfuly close")
@@ -172,7 +173,7 @@ glfw_error_callback :: proc "c" (code: i32, description: cstring) {
 	log.errorf("glfw: %i: %s", code, description)
 }
 
-update_unfiform_buffer :: proc(buffer: ^gfx.UniformBuffer, extend: vk.Extent2D) {
+update_unfiform_buffer :: proc(buffer: ^gfx.Uniform_Buffer, extend: vk.Extent2D) {
 	ubo := UniformBufferObject{}
 	ubo.model = glsl.mat4Rotate(glsl.vec3{1, 1, 1}, cast(f32)glfw.GetTime() * glsl.radians_f32(90))
 	ubo.view = glsl.mat4LookAt(glsl.vec3{0, 0, 2}, glsl.vec3{0, 0, 0}, glsl.vec3{0, 1, 0})
@@ -188,7 +189,7 @@ update_unfiform_buffer :: proc(buffer: ^gfx.UniformBuffer, extend: vk.Extent2D) 
 	runtime.mem_copy(buffer.mapped, &ubo, size_of(ubo))
 }
 
-start_unfiform_buffer :: proc(buffer: ^gfx.UniformBuffer, extend: vk.Extent2D) {
+start_unfiform_buffer :: proc(buffer: ^gfx.Uniform_Buffer, extend: vk.Extent2D) {
 	ubo := UniformBufferObject{}
 	ubo.model = glsl.mat4Rotate(glsl.vec3{0, 0, 0}, glsl.radians_f32(0))
 	ubo.model = glsl.mat4Translate(glsl.vec3{0, 0, 0})

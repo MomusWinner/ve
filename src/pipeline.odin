@@ -1,7 +1,7 @@
 package main
 
 import "eldr"
-import gfx "eldr/graphic"
+import gfx "eldr/graphics"
 
 default_shader_attribute :: proc() -> (eldr.VertexInputBindingDescription, [3]eldr.VertexInputAttributeDescription) {
 	bind_description := eldr.VertexInputBindingDescription {
@@ -37,23 +37,23 @@ default_shader_attribute :: proc() -> (eldr.VertexInputBindingDescription, [3]el
 create_default_pipeline :: proc(e: ^eldr.Eldr) {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	bindings := make([]gfx.PipelineSetBindingInfo, 2)
-	bindings[0] = gfx.PipelineSetBindingInfo {
+	bindings := make([]gfx.Pipeline_Set_Binding_Info, 2)
+	bindings[0] = gfx.Pipeline_Set_Binding_Info {
 		binding          = 0,
 		descriptor_type  = .UNIFORM_BUFFER,
 		descriptor_count = 1,
 		stage_flags      = {.VERTEX},
 	}
-	bindings[1] = gfx.PipelineSetBindingInfo {
+	bindings[1] = gfx.Pipeline_Set_Binding_Info {
 		binding          = 1,
 		descriptor_type  = .COMBINED_IMAGE_SAMPLER,
 		descriptor_count = 1,
 		stage_flags      = {.FRAGMENT},
 	}
 
-	set_infos := []gfx.PipelineSetInfo{gfx.PipelineSetInfo{set = 0, binding_infos = bindings}}
+	set_infos := []gfx.Pipeline_Set_Info{gfx.Pipeline_Set_Info{set = 0, binding_infos = bindings}}
 
-	create_info := gfx.CreatePipelineInfo {
+	create_info := gfx.Create_Pipeline_Info {
 		name = "default_pipeline",
 		set_infos = set_infos,
 		vertex_input_description = {
@@ -61,9 +61,9 @@ create_default_pipeline :: proc(e: ^eldr.Eldr) {
 			binding_description = vert_bind,
 			attribute_descriptions = vert_attr[:],
 		},
-		stage_infos = []gfx.PipelineStageInfo {
-			gfx.PipelineStageInfo{stage = {.VERTEX}, shader_path = "assets/vert.spv"},
-			gfx.PipelineStageInfo{stage = {.FRAGMENT}, shader_path = "assets/frag.spv"},
+		stage_infos = []gfx.Pipeline_Stage_Info {
+			gfx.Pipeline_Stage_Info{stage = {.VERTEX}, shader_path = "assets/vert.spv"},
+			gfx.Pipeline_Stage_Info{stage = {.FRAGMENT}, shader_path = "assets/frag.spv"},
 		},
 		input_assembly = {topology = .TRIANGLE_LIST},
 		rasterizer = {polygonMode = .FILL, lineWidth = 1, cullMode = {}, frontFace = .CLOCKWISE},

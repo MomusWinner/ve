@@ -1,4 +1,4 @@
-package graphic
+package graphics
 
 import "base:runtime"
 import "core:log"
@@ -21,8 +21,8 @@ UniformBufferObject :: struct {
 }
 
 ParticleRenderer :: struct {
-	g:                   ^Graphic,
-	uniform_buffer:      UniformBuffer,
+	g:                   ^Graphics,
+	uniform_buffer:      Uniform_Buffer,
 	ssbo:                Buffer,
 	descriptor_set:      vk.DescriptorSet,
 	draw_descriptor_set: vk.DescriptorSet,
@@ -40,7 +40,7 @@ particle_update_uniform_buffer :: proc(r: ^ParticleRenderer, delta_time: f32) {
 	runtime.mem_copy(r.uniform_buffer.mapped, &ubo, size_of(ubo))
 }
 
-particle_new :: proc(g: ^Graphic) -> ^ParticleRenderer {
+particle_new :: proc(g: ^Graphics) -> ^ParticleRenderer {
 	renderer := new(ParticleRenderer)
 	renderer.g = g
 	particles := generate_particles(cast(f32)g.swapchain.extent.width, cast(f32)g.swapchain.extent.height)
@@ -122,14 +122,14 @@ particle_draw :: proc(r: ^ParticleRenderer) {
 	vk.CmdDraw(r.g.command_buffer, PARTICLE_COUNT, 1, 0, 0)
 }
 
-default_shader_attribute :: proc() -> (VertexInputBindingDescription, [2]VertexInputAttributeDescription) {
-	bind_description := VertexInputBindingDescription {
+default_shader_attribute :: proc() -> (Vertex_Input_Binding_Description, [2]Vertex_Input_Attribute_Description) {
+	bind_description := Vertex_Input_Binding_Description {
 		binding   = 0,
 		stride    = size_of(Particle),
 		inputRate = .VERTEX,
 	}
 
-	attribute_descriptions := [2]VertexInputAttributeDescription {
+	attribute_descriptions := [2]Vertex_Input_Attribute_Description {
 		{binding = 0, location = 0, format = .R32G32_SFLOAT, offset = cast(u32)offset_of(Particle, position)},
 		{binding = 0, location = 1, format = .R32G32B32_SFLOAT, offset = cast(u32)offset_of(Particle, color)},
 	}
@@ -138,7 +138,7 @@ default_shader_attribute :: proc() -> (VertexInputBindingDescription, [2]VertexI
 }
 
 @(private = "file")
-create_ssbo :: proc(g: ^Graphic, particles: []Particle) -> Buffer {
+create_ssbo :: proc(g: ^Graphics, particles: []Particle) -> Buffer {
 	size := cast(vk.DeviceSize)(size_of(Particle) * cast(f32)len(particles))
 
 	staging_buffer := create_buffer(g, size, {.TRANSFER_SRC}, {.HOST_VISIBLE, .HOST_COHERENT})
@@ -153,7 +153,7 @@ create_ssbo :: proc(g: ^Graphic, particles: []Particle) -> Buffer {
 }
 
 @(private = "file")
-create_compute_stage :: proc(g: ^Graphic) {
+create_compute_stage :: proc(g: ^Graphics) {
 	module, ok := create_shader_module(g.device, "assets/shader.comp")
 	if !ok {
 		log.error("couldn't find comp shader")
@@ -191,26 +191,26 @@ generate_particles :: proc(width, height: f32) -> []Particle {
 }
 
 @(private)
-create_draw_pipeline :: proc(g: ^Graphic) {
+create_draw_pipeline :: proc(g: ^Graphics) {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	bindings := make([]PipelineSetBindingInfo, 1)
-	bindings[0] = PipelineSetBindingInfo {
+	bindings := make([]Pipeline_Set_Binding_Info, 1)
+	bindings[0] = Pipeline_Set_Binding_Info {
 		binding          = 0,
 		descriptor_type  = .STORAGE_BUFFER,
 		descriptor_count = 1,
 		stage_flags      = {.VERTEX},
 	}
 
-	set_infos := []PipelineSetInfo{PipelineSetInfo{set = 0, binding_infos = bindings}}
+	set_infos := []Pipeline_Set_Info{Pipeline_Set_Info{set = 0, binding_infos = bindings}}
 
-	create_info := CreatePipelineInfo {
+	create_info := Create_Pipeline_Info {
 		name = DRAW_PIPELINE_NAME,
 		set_infos = set_infos,
 		vertex_input_description = {binding_description = vert_bind, attribute_descriptions = vert_attr[:]},
-		stage_infos = []PipelineStageInfo {
-			PipelineStageInfo{stage = {.VERTEX}, shader_path = "assets/particle_vert.spv"},
-			PipelineStageInfo{stage = {.FRAGMENT}, shader_path = "assets/particle_frag.spv"},
+		stage_infos = []Pipeline_Stage_Info {
+			Pipeline_Stage_Info{stage = {.VERTEX}, shader_path = "assets/particle_vert.spv"},
+			Pipeline_Stage_Info{stage = {.FRAGMENT}, shader_path = "assets/particle_frag.spv"},
 		},
 		input_assembly = {topology = .POINT_LIST},
 		rasterizer = {polygonMode = .FILL, lineWidth = 1, cullMode = {}, frontFace = .CLOCKWISE},
@@ -232,7 +232,7 @@ create_draw_pipeline :: proc(g: ^Graphic) {
 }
 
 @(private = "file")
-create_comp_pipeline :: proc(g: ^Graphic) -> ^Pipeline {
+create_comp_pipeline :: proc(g: ^Graphics) -> ^Pipeline {
 	module, ok := create_shader_module(g.device, "assets/particle_comp.spv")
 	if !ok {
 		log.error("couldn't find comp shader")
@@ -245,28 +245,28 @@ create_comp_pipeline :: proc(g: ^Graphic) -> ^Pipeline {
 		pName  = "main",
 	}
 
-	pipeline_binding_infos := make([]PipelineSetBindingInfo, 2)
-	pipeline_binding_infos[0] = PipelineSetBindingInfo {
+	pipeline_binding_infos := make([]Pipeline_Set_Binding_Info, 2)
+	pipeline_binding_infos[0] = Pipeline_Set_Binding_Info {
 		binding          = 0,
 		descriptor_type  = .UNIFORM_BUFFER,
 		descriptor_count = 1,
 		stage_flags      = {.COMPUTE},
 	}
-	pipeline_binding_infos[1] = PipelineSetBindingInfo {
+	pipeline_binding_infos[1] = Pipeline_Set_Binding_Info {
 		binding          = 1,
 		descriptor_type  = .STORAGE_BUFFER,
 		descriptor_count = 1,
 		stage_flags      = {.COMPUTE},
 	}
-	set_info := PipelineSetInfo {
+	set_info := Pipeline_Set_Info {
 		set           = 0,
 		binding_infos = pipeline_binding_infos,
 	}
 
-	set_infos := make([]PipelineSetInfo, 1)
+	set_infos := make([]Pipeline_Set_Info, 1)
 	set_infos[0] = set_info
 
-	pipeline_info := new(CreatePipelineInfo)
+	pipeline_info := new(Create_Pipeline_Info)
 	pipeline_info.set_infos = set_infos
 
 	descriptor_set_layouts := _set_infos_to_descriptor_set_layouts(g, set_infos)

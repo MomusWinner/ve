@@ -1,4 +1,4 @@
-package graphic
+package graphics
 
 import "base:intrinsics"
 import "base:runtime"
@@ -36,50 +36,50 @@ Buffer :: struct {
 	memory: vk.DeviceMemory,
 }
 
-UniformBuffer :: struct {
+Uniform_Buffer :: struct {
 	using parent: Buffer,
 	mapped:       rawptr,
 }
 
-VertexInputBindingDescription :: vk.VertexInputBindingDescription
-VertexInputAttributeDescription :: vk.VertexInputAttributeDescription
+Vertex_Input_Binding_Description :: vk.VertexInputBindingDescription
+Vertex_Input_Attribute_Description :: vk.VertexInputAttributeDescription
 
-VertexInputDescription :: struct {
-	binding_description:    VertexInputBindingDescription,
-	attribute_descriptions: []VertexInputAttributeDescription,
+Vertex_Input_Description :: struct {
+	binding_description:    Vertex_Input_Binding_Description,
+	attribute_descriptions: []Vertex_Input_Attribute_Description,
 }
 
-PipelineSetBindingInfo :: struct {
+Pipeline_Set_Binding_Info :: struct {
 	binding:          u32,
 	descriptor_type:  vk.DescriptorType,
 	descriptor_count: u32,
 	stage_flags:      vk.ShaderStageFlags,
 }
 
-PipelineResource :: union {
+Pipeline_Resource :: union {
 	Texture,
-	UniformBuffer,
+	Uniform_Buffer,
 	Buffer,
 }
 
-PipelineStageInfo :: struct {
+Pipeline_Stage_Info :: struct {
 	stage:       vk.ShaderStageFlags,
 	shader_path: string,
 }
 
-PipelineSetInfo :: struct {
+Pipeline_Set_Info :: struct {
 	set:           u32,
-	binding_infos: []PipelineSetBindingInfo,
+	binding_infos: []Pipeline_Set_Binding_Info,
 }
 
-CreatePipelineInfo :: struct {
+Create_Pipeline_Info :: struct {
 	name:                     string,
-	set_infos:                []PipelineSetInfo,
-	stage_infos:              []PipelineStageInfo,
+	set_infos:                []Pipeline_Set_Info,
+	stage_infos:              []Pipeline_Stage_Info,
 	vertex_input_description: struct {
 		input_rate:             vk.VertexInputRate,
-		binding_description:    VertexInputBindingDescription,
-		attribute_descriptions: []VertexInputAttributeDescription,
+		binding_description:    Vertex_Input_Binding_Description,
+		attribute_descriptions: []Vertex_Input_Attribute_Description,
 	},
 	input_assembly:           struct {
 		topology: vk.PrimitiveTopology,
@@ -109,16 +109,32 @@ CreatePipelineInfo :: struct {
 
 Pipeline :: struct {
 	pipeline:               vk.Pipeline,
-	create_info:            ^CreatePipelineInfo,
+	create_info:            ^Create_Pipeline_Info,
 	layout:                 vk.PipelineLayout,
 	descriptor_set_layouts: []vk.DescriptorSetLayout,
 }
 
-PipelineManager :: struct {
+Pipeline_Manager :: struct {
 	pipeline_by_name: map[string]^Pipeline,
 }
 
-Graphic :: struct {
+Swap_Chain :: struct {
+	swapchain:                  vk.SwapchainKHR,
+	format:                     vk.SurfaceFormatKHR,
+	extent:                     vk.Extent2D,
+	samples:                    vk.SampleCountFlags,
+	color_image:                TextureImage,
+	depth_image:                TextureImage,
+	images:                     []vk.Image,
+	image_views:                []vk.ImageView,
+	frame_buffers:              []vk.Framebuffer,
+	render_finished_semaphores: []vk.Semaphore,
+	_device:                    vk.Device,
+	_physical_device:           vk.PhysicalDevice,
+	_surface:                   vk.SurfaceKHR,
+}
+
+Graphics :: struct {
 	window:                    glfw.WindowHandle,
 	instance_info:             vk.InstanceCreateInfo,
 	instance:                  vk.Instance,
@@ -134,11 +150,11 @@ Graphic :: struct {
 	graphics_queue:            vk.Queue,
 	present_queue:             vk.Queue,
 	// Swap chain 
-	swapchain:                 ^SwapChain,
+	swapchain:                 ^Swap_Chain,
 	image_index:               u32,
 	render_pass:               vk.RenderPass,
 	// Pipeline
-	pipeline_manager:          ^PipelineManager,
+	pipeline_manager:          ^Pipeline_Manager,
 	descriptor_pool:           vk.DescriptorPool,
 	// Command pool
 	command_pool:              vk.CommandPool,
@@ -151,40 +167,19 @@ Graphic :: struct {
 	render_started:            bool,
 }
 
-SwapChain :: struct {
-	swapchain:                  vk.SwapchainKHR,
-	format:                     vk.SurfaceFormatKHR,
-	extent:                     vk.Extent2D,
-	depth_image:                TextureImage,
-	color_image:                TextureImage,
-	images:                     []vk.Image,
-	image_views:                []vk.ImageView,
-	frame_buffers:              []vk.Framebuffer,
-	render_finished_semaphores: []vk.Semaphore,
-}
-
-destroy_graphic :: proc(g: ^Graphic) {
-	destroy_framebuffers(g)
-	destroy_sync_obj(g)
-	destroy_command_pool(g)
-	_destroy_descriptor_pool(g)
-	destroy_render_pass(g)
-	destroy_swapchain(g)
-	_destroy_pipeline_mananger(g)
-	destroy_logical_device(g)
-	destroy_surface(g)
-	destroy_instance(g)
-
-	free(g)
-}
-
 BeginRenderError :: enum {
 	None,
 	OutOfDate,
 	NotEnded,
 }
 
-begin_render :: proc(g: ^Graphic) -> BeginRenderError {
+get_screen_size :: proc(g: ^Graphics) -> (width: u32, height: u32) {
+	width = g.swapchain.extent.width
+	height = g.swapchain.extent.height
+	return
+}
+
+begin_render :: proc(g: ^Graphics) -> BeginRenderError {
 	if g.render_started {
 		log.error("Call end_render() after begin_render()")
 		return .NotEnded
@@ -206,7 +201,7 @@ begin_render :: proc(g: ^Graphic) -> BeginRenderError {
 
 	#partial switch acquire_result {
 	case .ERROR_OUT_OF_DATE_KHR:
-		recreate_swapchain(g)
+		_recreate_swapchain(g)
 		return .OutOfDate
 
 	case .SUCCESS, .SUBOPTIMAL_KHR:
@@ -239,7 +234,7 @@ begin_render :: proc(g: ^Graphic) -> BeginRenderError {
 	return .None
 }
 
-end_render :: proc(g: ^Graphic, wait_semaphores: []vk.Semaphore, wait_stages: []vk.PipelineStageFlags) {
+end_render :: proc(g: ^Graphics, wait_semaphores: []vk.Semaphore, wait_stages: []vk.PipelineStageFlags) {
 	if !g.render_started {
 		log.error("Call begin_render() before end_render()")
 	}
@@ -279,7 +274,7 @@ end_render :: proc(g: ^Graphic, wait_semaphores: []vk.Semaphore, wait_stages: []
 	switch {
 	case present_result == .ERROR_OUT_OF_DATE_KHR || present_result == .SUBOPTIMAL_KHR || g.framebuffer_resized:
 		g.framebuffer_resized = false
-		recreate_swapchain(g)
+		_recreate_swapchain(g)
 	case present_result == .SUCCESS:
 	case:
 		log.panicf("vulkan: present failure: %v", present_result)

@@ -1,9 +1,9 @@
-package graphic
+package graphics
 
 import "core:log"
 import vk "vendor:vulkan"
 
-create_pipeline :: proc(g: ^Graphic, create_pipeline_info: ^CreatePipelineInfo) -> bool {
+create_pipeline :: proc(g: ^Graphics, create_pipeline_info: ^Create_Pipeline_Info) -> bool {
 	pipeline, ok := _create_pipeline(g, create_pipeline_info, context.allocator)
 	if !ok {
 		log.errorf("couldn't load shader", create_pipeline_info.name)
@@ -19,7 +19,7 @@ create_pipeline :: proc(g: ^Graphic, create_pipeline_info: ^CreatePipelineInfo) 
 	return true
 }
 
-destroy_pipline :: proc(g: ^Graphic, pipeline: ^Pipeline) {
+destroy_pipline :: proc(g: ^Graphics, pipeline: ^Pipeline) {
 	vk.DestroyPipelineLayout(g.device, pipeline.layout, nil)
 	vk.DestroyPipeline(g.device, pipeline.pipeline, nil)
 
@@ -31,21 +31,21 @@ destroy_pipline :: proc(g: ^Graphic, pipeline: ^Pipeline) {
 	_destroy_create_pipeline_info(pipeline.create_info)
 }
 
-bind_pipeline :: proc(g: ^Graphic, pipeline_name: string) {
+bind_pipeline :: proc(g: ^Graphics, pipeline_name: string) {
 	pipeline, _ := _get_pipeline_by_name(g.pipeline_manager, pipeline_name)
 	vk.CmdBindPipeline(g.command_buffer, .GRAPHICS, pipeline.pipeline)
 }
 
-bind_descriptor_set :: proc(g: ^Graphic, pipeline_name: string, descriptor_set: [^]vk.DescriptorSet) {
+bind_descriptor_set :: proc(g: ^Graphics, pipeline_name: string, descriptor_set: [^]vk.DescriptorSet) {
 	pipeline, _ := _get_pipeline_by_name(g.pipeline_manager, pipeline_name)
 	vk.CmdBindDescriptorSets(g.command_buffer, .GRAPHICS, pipeline.layout, 0, 1, descriptor_set, 0, nil)
 }
 
 create_descriptor_set :: proc(
-	g: ^Graphic,
+	g: ^Graphics,
 	pipeline_name: string,
 	set_index: int,
-	resources: []PipelineResource,
+	resources: []Pipeline_Resource,
 ) -> (
 	vk.DescriptorSet,
 	bool,

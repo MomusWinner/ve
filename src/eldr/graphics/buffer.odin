@@ -1,4 +1,4 @@
-package graphic
+package graphics
 
 import "base:intrinsics"
 import "base:runtime"
@@ -23,8 +23,7 @@ find_memory_type :: proc(
 	vk.GetPhysicalDeviceMemoryProperties(physical_device, &mem_property)
 
 	for i: u32 = 0; i < mem_property.memoryTypeCount; i += 1 {
-		if (type_filter & (1 << i) != 0) &&
-		   (mem_property.memoryTypes[i].propertyFlags >= properties) {
+		if (type_filter & (1 << i) != 0) && (mem_property.memoryTypes[i].propertyFlags >= properties) {
 			return i, true
 		}
 	}
@@ -33,7 +32,7 @@ find_memory_type :: proc(
 }
 
 create_buffer :: proc(
-	g: ^Graphic,
+	g: ^Graphics,
 	size: vk.DeviceSize,
 	usage: vk.BufferUsageFlags,
 	properties: vk.MemoryPropertyFlags,
@@ -51,11 +50,7 @@ create_buffer :: proc(
 	mem_requirements: vk.MemoryRequirements
 	vk.GetBufferMemoryRequirements(g.device, buffer.buffer, &mem_requirements)
 
-	memory_type, ok := find_memory_type(
-		g.physical_device,
-		mem_requirements.memoryTypeBits,
-		properties,
-	)
+	memory_type, ok := find_memory_type(g.physical_device, mem_requirements.memoryTypeBits, properties)
 	if !ok {
 		log.fatal("Failed to find suitable memory type!")
 	}
@@ -75,14 +70,14 @@ create_buffer :: proc(
 	return buffer
 }
 
-destroy_buffer :: proc(g: ^Graphic, buffer: ^Buffer) {
+destroy_buffer :: proc(g: ^Graphics, buffer: ^Buffer) {
 	vk.DestroyBuffer(g.device, buffer.buffer, nil)
 	vk.FreeMemory(g.device, buffer.memory, nil)
 	buffer.buffer = 0
 	buffer.memory = 0
 }
 
-fill_buffer :: proc(g: ^Graphic, buffer: Buffer, buffer_size: vk.DeviceSize, vertices: rawptr) {
+fill_buffer :: proc(g: ^Graphics, buffer: Buffer, buffer_size: vk.DeviceSize, vertices: rawptr) {
 	data: rawptr
 	vk.MapMemory(g.device, buffer.memory, 0, buffer_size, {}, &data)
 	intrinsics.mem_copy(data, vertices, buffer_size)
@@ -90,25 +85,20 @@ fill_buffer :: proc(g: ^Graphic, buffer: Buffer, buffer_size: vk.DeviceSize, ver
 }
 
 
-copy_buffer :: proc(
-	g: ^Graphic,
-	src_buffer: Buffer,
-	dst_buffer: Buffer,
-	device_size: vk.DeviceSize,
-) {
-	command_buffer := begin_single_command(g)
+copy_buffer :: proc(g: ^Graphics, src_buffer: Buffer, dst_buffer: Buffer, device_size: vk.DeviceSize) {
+	sc := _begin_single_command(g)
 
 	copy := vk.BufferCopy {
 		srcOffset = 0,
 		dstOffset = 0,
 		size      = device_size,
 	}
-	vk.CmdCopyBuffer(command_buffer, src_buffer.buffer, dst_buffer.buffer, 1, &copy)
+	vk.CmdCopyBuffer(sc.command_buffer, src_buffer.buffer, dst_buffer.buffer, 1, &copy)
 
-	end_single_command(g, command_buffer)
+	_end_single_command(sc)
 }
 
-create_vertex_buffer :: proc(g: ^Graphic, vertices: rawptr, size: vk.DeviceSize) -> Buffer {
+create_vertex_buffer :: proc(g: ^Graphics, vertices: rawptr, size: vk.DeviceSize) -> Buffer {
 	staging_buffer := create_buffer(g, size, {.TRANSFER_SRC}, {.HOST_VISIBLE, .HOST_COHERENT})
 	fill_buffer(g, staging_buffer, size, vertices)
 
@@ -120,7 +110,7 @@ create_vertex_buffer :: proc(g: ^Graphic, vertices: rawptr, size: vk.DeviceSize)
 	return vertex_buffer
 }
 
-create_index_buffer :: proc(g: ^Graphic, indices: rawptr, size: vk.DeviceSize) -> Buffer {
+create_index_buffer :: proc(g: ^Graphics, indices: rawptr, size: vk.DeviceSize) -> Buffer {
 	staging_buffer := create_buffer(g, size, {.TRANSFER_SRC}, {.HOST_VISIBLE, .HOST_COHERENT})
 	fill_buffer(g, staging_buffer, size, indices)
 
@@ -132,8 +122,8 @@ create_index_buffer :: proc(g: ^Graphic, indices: rawptr, size: vk.DeviceSize) -
 	return index_buffer
 }
 
-create_uniform_buffer :: proc(g: ^Graphic, size: vk.DeviceSize) -> UniformBuffer {
-	unfiorm_buffer := UniformBuffer {
+create_uniform_buffer :: proc(g: ^Graphics, size: vk.DeviceSize) -> Uniform_Buffer {
+	unfiorm_buffer := Uniform_Buffer {
 		parent = create_buffer(g, size, {.UNIFORM_BUFFER}, {.HOST_COHERENT, .HOST_VISIBLE}),
 	}
 
@@ -142,7 +132,7 @@ create_uniform_buffer :: proc(g: ^Graphic, size: vk.DeviceSize) -> UniformBuffer
 	return unfiorm_buffer
 }
 
-destroy_uniform_buffer :: proc(g: ^Graphic, uniform_buffer: ^UniformBuffer) {
+destroy_uniform_buffer :: proc(g: ^Graphics, uniform_buffer: ^Uniform_Buffer) {
 	vk.UnmapMemory(g.device, uniform_buffer.memory)
 	destroy_buffer(g, &uniform_buffer.parent)
 	uniform_buffer.mapped = nil

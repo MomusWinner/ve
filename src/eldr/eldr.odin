@@ -2,7 +2,7 @@ package eldr
 
 import "core:log"
 import "core:strings"
-import gfx "graphic"
+import gfx "graphics"
 import imp "importer"
 import "vendor:glfw"
 import stb_image "vendor:stb/image"
@@ -10,7 +10,7 @@ import vk "vendor:vulkan"
 
 // Engine
 Eldr :: struct {
-	g: ^gfx.Graphic,
+	g: ^gfx.Graphics,
 }
 
 destroy_eldr :: proc(e: ^Eldr) {
