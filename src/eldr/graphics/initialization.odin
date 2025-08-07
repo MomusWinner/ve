@@ -9,6 +9,7 @@ import "core:strings"
 import "core:os"
 import "vendor:glfw"
 import vk "vendor:vulkan"
+import "vma"
 
 when ODIN_OS == .Darwin {
 	// NOTE: just a bogus import of the system library,
@@ -34,6 +35,7 @@ init_graphic :: proc(g: ^Graphics, window: glfw.WindowHandle) {
 	_create_surface(g)
 	_pick_physical_device(g)
 	_create_logical_device(g)
+	_create_vma_allocator(g)
 	g.swapchain = _swapchain_new(g.window, g.physical_device, g.device, g.surface, g.msaa_samples)
 	_create_render_pass(g)
 	_create_descriptor_pool(g)
@@ -98,7 +100,7 @@ _create_instance :: proc(g: ^Graphics) {
 			applicationVersion = vk.MAKE_VERSION(1, 0, 0),
 			pEngineName = "No Engine",
 			engineVersion = vk.MAKE_VERSION(1, 0, 0),
-			apiVersion = vk.API_VERSION_1_2,
+			apiVersion = VULKAN_API_VERSION,
 		},
 	}
 	g.instance_info = create_info
@@ -367,6 +369,20 @@ _create_logical_device :: proc(g: ^Graphics) {
 
 	vk.GetDeviceQueue(g.device, indices.graphics.?, 0, &g.graphics_queue)
 	vk.GetDeviceQueue(g.device, indices.present.?, 0, &g.present_queue)
+}
+
+@(private)
+_create_vma_allocator :: proc(g: ^Graphics) {
+	vulkan_functions := vma.create_vulkan_functions()
+	create_info := vma.AllocatorCreateInfo {
+		vulkanApiVersion = VULKAN_API_VERSION,
+		physicalDevice   = g.physical_device,
+		device           = g.device,
+		instance         = g.instance,
+		pVulkanFunctions = &vulkan_functions,
+	}
+
+	must(vma.CreateAllocator(&create_info, &g.allocator), "failed to create vma.Allocator")
 }
 
 @(private = "file")

@@ -12,6 +12,9 @@ import vk "vendor:vulkan"
 
 import "../common"
 import hm "../handle_map"
+import "vma"
+
+VULKAN_API_VERSION :: vk.API_VERSION_1_4
 
 // Enables Vulkan debug logging and validation layers.
 ENABLE_VALIDATION_LAYERS :: #config(ENABLE_VALIDATION_LAYERS, ODIN_DEBUG)
@@ -169,6 +172,8 @@ Graphics :: struct {
 	instance_info:             vk.InstanceCreateInfo,
 	instance:                  vk.Instance,
 	dbg_messenger:             vk.DebugUtilsMessengerEXT, // Null on release
+	allocator:                 vma.Allocator,
+
 	// Device
 	msaa_samples:              vk.SampleCountFlags,
 	physical_device:           vk.PhysicalDevice,
