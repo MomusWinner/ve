@@ -10,7 +10,6 @@ import gfx "eldr/graphics"
 import vk "vendor:vulkan"
 
 Scene :: struct {
-	e:       ^eldr.Eldr,
 	data:    rawptr,
 	init:    proc(s: ^Scene),
 	update:  proc(s: ^Scene, dt: f64),

@@ -10,7 +10,7 @@ import vk "vendor:vulkan"
 
 
 @(require_results)
-create_graphics_pipeline :: proc(g: ^Graphics, create_pipeline_info: ^Create_Pipeline_Info) -> (Handle, bool) {
+create_graphics_pipeline :: proc(g: ^Graphics, create_pipeline_info: ^Create_Pipeline_Info) -> (Pipeline_Handle, bool) {
 	pipeline, ok := _create_graphics_pipeline(g, create_pipeline_info, context.allocator)
 	if !ok {
 		log.errorf("couldn't load pipeline")
@@ -28,7 +28,13 @@ destroy_graphics_pipeline :: proc(device: vk.Device, pipeline: ^Graphics_Pipelin
 }
 
 @(require_results)
-create_compute_pipeline :: proc(g: ^Graphics, create_pipeline_info: ^Create_Compute_Pipeline_Info) -> (Handle, bool) {
+create_compute_pipeline :: proc(
+	g: ^Graphics,
+	create_pipeline_info: ^Create_Compute_Pipeline_Info,
+) -> (
+	Pipeline_Handle,
+	bool,
+) {
 	pipeline, ok := _create_compute_pipeline(g, create_pipeline_info, context.allocator)
 	if !ok {
 		log.errorf("couldn't load pipeline")
@@ -100,12 +106,14 @@ _reload_graphics_pipeline :: proc(g: ^Graphics, pipeline: ^Graphics_Pipeline) {
 _create_descriptor_pool :: proc(g: ^Graphics) {
 	pool_sizes := [?]vk.DescriptorPoolSize {
 		vk.DescriptorPoolSize{type = .UNIFORM_BUFFER, descriptorCount = UNIFORM_DESCRIPTOR_MAX},
+		vk.DescriptorPoolSize{type = .UNIFORM_BUFFER_DYNAMIC, descriptorCount = UNIFORM_DESCRIPTOR_DYNAMIC_MAX},
 		vk.DescriptorPoolSize{type = .COMBINED_IMAGE_SAMPLER, descriptorCount = IMAGE_SAMPLER_DESCRIPTOR_MAX},
 		vk.DescriptorPoolSize{type = .STORAGE_BUFFER, descriptorCount = STORAGE_DESCRIPTOR_MAX},
 	}
 
 	poolInfo := vk.DescriptorPoolCreateInfo {
 		sType         = .DESCRIPTOR_POOL_CREATE_INFO,
+		flags         = {.UPDATE_AFTER_BIND},
 		poolSizeCount = len(pool_sizes),
 		pPoolSizes    = raw_data(&pool_sizes),
 		maxSets       = DESCRIPTOR_SET_MAX,
@@ -160,21 +168,6 @@ _create_descriptor_set :: proc(
 				descriptorCount = binding.descriptor_count,
 				pImageInfo      = descriptor_image_info,
 			}
-		case Uniform_Buffer:
-			descriptor_buffer_info := new(vk.DescriptorBufferInfo, context.temp_allocator)
-			descriptor_buffer_info.buffer = r.buffer
-			descriptor_buffer_info.offset = 0
-			descriptor_buffer_info.range = cast(vk.DeviceSize)vk.WHOLE_SIZE
-
-			write_descriptor_sets[i] = vk.WriteDescriptorSet {
-				sType           = .WRITE_DESCRIPTOR_SET,
-				dstSet          = descriptor_set,
-				dstBinding      = binding.binding,
-				descriptorType  = binding.descriptor_type,
-				dstArrayElement = 0,
-				descriptorCount = binding.descriptor_count,
-				pBufferInfo     = descriptor_buffer_info,
-			}
 		case Buffer:
 			descriptor_buffer_info := new(vk.DescriptorBufferInfo, context.temp_allocator)
 			descriptor_buffer_info.buffer = r.buffer
@@ -218,7 +211,7 @@ _create_graphics_pipeline :: proc(
 
 	descriptor_set_layouts := _set_infos_to_descriptor_set_layouts(g, create_info.set_infos, allocator)
 
-	pipeline_layout := _create_pipeline_layout(g, descriptor_set_layouts)
+	pipeline_layout := _create_pipeline_layout(g, descriptor_set_layouts, create_info.push_constants)
 
 	pipeline_info := vk.GraphicsPipelineCreateInfo {
 		sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
@@ -318,6 +311,7 @@ _copy_create_graphics_pipeline_info :: proc(
 ) -> ^Create_Pipeline_Info {
 	copy_info := new(Create_Pipeline_Info, allocator)
 
+	// Set Infos
 	copy_info.set_infos = make([]Pipeline_Set_Info, len(info.set_infos))
 	copy(copy_info.set_infos, info.set_infos)
 	for set_info, i in info.set_infos {
@@ -326,9 +320,15 @@ _copy_create_graphics_pipeline_info :: proc(
 		copy_info.set_infos[i].binding_infos = bindings
 	}
 
+	// Push Constatns
+	copy_info.push_constants = make([]Push_Constant_Range, len(info.push_constants))
+	copy(copy_info.push_constants, info.push_constants)
+
+	// Stage Infos
 	copy_info.stage_infos = make([]Pipeline_Stage_Info, len(info.stage_infos))
 	copy(copy_info.stage_infos, info.stage_infos)
 
+	// Vertex Input Description
 	copy_info.vertex_input_description = info.vertex_input_description
 	copy_info.vertex_input_description.attribute_descriptions = make(
 		[]Vertex_Input_Attribute_Description,
@@ -351,8 +351,10 @@ _copy_create_graphics_pipeline_info :: proc(
 _destroy_create_graphics_pipeline_info :: proc(info: ^Create_Pipeline_Info) {
 	for set_info in info.set_infos {
 		delete(set_info.binding_infos)
+		delete(set_info.flags)
 	}
 	delete(info.set_infos)
+	delete(info.push_constants)
 	delete(info.stage_infos)
 	delete(info.vertex_input_description.attribute_descriptions)
 	free(info)
@@ -396,8 +398,8 @@ _set_infos_to_descriptor_set_layouts :: proc(
 	allocator := context.allocator,
 ) -> []vk.DescriptorSetLayout {
 	descriptor_set_layouts := make([]vk.DescriptorSetLayout, len(set_infos))
-	for set_info, i in set_infos {
-		descriptor_set_layouts[i] = _set_info_to_descriptor_set_layout(g, set_info)
+	for &set_info, i in set_infos {
+		descriptor_set_layouts[i] = _set_info_to_descriptor_set_layout(g, &set_info)
 	}
 
 	return descriptor_set_layouts
@@ -405,28 +407,39 @@ _set_infos_to_descriptor_set_layouts :: proc(
 
 @(private = "file")
 @(require_results)
-_set_info_to_descriptor_set_layout :: proc(g: ^Graphics, set_info: Pipeline_Set_Info) -> vk.DescriptorSetLayout {
-	descriptor_bindings := make([dynamic]vk.DescriptorSetLayoutBinding, context.temp_allocator)
+_set_info_to_descriptor_set_layout :: proc(g: ^Graphics, set_info: ^Pipeline_Set_Info) -> vk.DescriptorSetLayout {
+	descriptor_bindings := make([]vk.DescriptorSetLayoutBinding, len(set_info.binding_infos), context.temp_allocator)
 
-	for binding in set_info.binding_infos {
-		append(
-			&descriptor_bindings,
-			vk.DescriptorSetLayoutBinding {
-				binding = binding.binding,
-				descriptorType = binding.descriptor_type,
-				descriptorCount = binding.descriptor_count,
-				stageFlags = binding.stage_flags,
-				pImmutableSamplers = nil,
-			},
-		)
+	for &binding, i in set_info.binding_infos {
+		descriptor_bindings[i].binding = binding.binding
+		descriptor_bindings[i].descriptorType = binding.descriptor_type
+		descriptor_bindings[i].descriptorCount = binding.descriptor_count
+		descriptor_bindings[i].stageFlags = binding.stage_flags
+		descriptor_bindings[i].pImmutableSamplers = nil
+	}
+
+	use_binding_flags := false
+
+	p_binding_flags: ^vk.DescriptorSetLayoutBindingFlagsCreateInfo = nil
+
+	if set_info.flags != nil && len(set_info.flags) > 0 {
+		binding_flags := vk.DescriptorSetLayoutBindingFlagsCreateInfo {
+			sType         = .DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+			pNext         = nil,
+			pBindingFlags = raw_data(set_info.flags),
+			bindingCount  = 3,
+		}
+		p_binding_flags = &binding_flags
 	}
 
 	descriptor_set_layout := vk.DescriptorSetLayout{}
 
 	layout_info := vk.DescriptorSetLayoutCreateInfo {
 		sType        = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		pNext        = p_binding_flags,
 		bindingCount = cast(u32)len(descriptor_bindings),
 		pBindings    = raw_data(descriptor_bindings),
+		flags        = {.UPDATE_AFTER_BIND_POOL},
 	}
 
 	must(
@@ -525,11 +538,7 @@ _create_shader_stages :: proc(
 		shader_module, ok := _create_shader_module(device, pm, path, compile)
 
 		if !ok {
-			log.errorf(
-				"couldn't create shader module for stage %v. Path: %s",
-				stage_info.stage,
-				stage_info.shader_path,
-			)
+			log.errorf("couldn't create shader module for stage %v. Path: %s", stage_info.stage, stage_info.shader_path)
 			return nil, false
 		}
 		shader_stages[i] = vk.PipelineShaderStageCreateInfo {
@@ -701,13 +710,16 @@ _create_depth_stencil_info :: proc(
 _create_pipeline_layout :: proc(
 	g: ^Graphics,
 	descriptor_set_layouts: []vk.DescriptorSetLayout,
+	push_constants: []vk.PushConstantRange = nil,
 	allocator := context.allocator,
 ) -> vk.PipelineLayout {
 
 	pipeline_layout_info := vk.PipelineLayoutCreateInfo {
-		sType          = .PIPELINE_LAYOUT_CREATE_INFO,
-		setLayoutCount = cast(u32)len(descriptor_set_layouts),
-		pSetLayouts    = raw_data(descriptor_set_layouts),
+		sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
+		setLayoutCount         = cast(u32)len(descriptor_set_layouts),
+		pSetLayouts            = raw_data(descriptor_set_layouts),
+		pushConstantRangeCount = cast(u32)len(push_constants),
+		pPushConstantRanges    = raw_data(push_constants),
 	}
 
 	layout := vk.PipelineLayout{}

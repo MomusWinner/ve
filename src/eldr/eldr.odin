@@ -8,14 +8,15 @@ import "vendor:glfw"
 import stb_image "vendor:stb/image"
 import vk "vendor:vulkan"
 
-// Engine
 Eldr :: struct {
 	g: ^gfx.Graphics,
 }
 
-destroy_eldr :: proc(e: ^Eldr) {
-	gfx.destroy_graphic(e.g)
-	free(e)
+// @(private) TODO: make private
+ctx: Eldr
+
+destroy_eldr :: proc() {
+	gfx.destroy_graphic(ctx.g)
 }
 
 load_image :: proc(path: string, desired_channels: i32 = 4) -> (image: Image, ok: bool) {

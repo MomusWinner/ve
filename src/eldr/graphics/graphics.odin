@@ -4,6 +4,7 @@ import "base:intrinsics"
 import "base:runtime"
 
 import "core:log"
+import "core:math/linalg/glsl"
 import "core:slice"
 import "core:strings"
 
@@ -23,23 +24,26 @@ ENABLE_VALIDATION_LAYERS :: #config(ENABLE_VALIDATION_LAYERS, ODIN_DEBUG)
 
 DEVICE_EXTENSIONS := []cstring {
 	vk.KHR_SWAPCHAIN_EXTENSION_NAME,
+	vk.EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
 	// KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 }
 
-UNIFORM_DESCRIPTOR_MAX :: 30
-IMAGE_SAMPLER_DESCRIPTOR_MAX :: 30
-STORAGE_DESCRIPTOR_MAX :: 30
-DESCRIPTOR_SET_MAX :: 30
-
-Handle :: hm.Handle
+UNIFORM_DESCRIPTOR_MAX :: 300
+UNIFORM_DESCRIPTOR_DYNAMIC_MAX :: 30
+IMAGE_SAMPLER_DESCRIPTOR_MAX :: 300
+STORAGE_DESCRIPTOR_MAX :: 300
+DESCRIPTOR_SET_MAX :: 300
 
 vec2 :: common.vec2
 vec3 :: common.vec3
+vec4 :: common.vec4
+mat4 :: common.mat4
 
 Vertex :: common.Vertex
 Image :: common.Image
 
 Texture :: struct {
+	name:            string,
 	image:           vk.Image,
 	view:            vk.ImageView,
 	sampler:         vk.Sampler,
@@ -49,17 +53,24 @@ Texture :: struct {
 
 Buffer :: struct {
 	buffer:          vk.Buffer,
+	usage:           vk.BufferUsageFlags,
 	allocation:      vma.Allocation,
 	allocation_info: vma.AllocationInfo,
+	mapped:          rawptr,
 }
 
-Uniform_Buffer :: struct {
-	using base: Buffer,
-	mapped:     rawptr,
-}
+// Uniform_Buffer :: struct {
+// 	using base: Buffer,
+// 	mapped:     rawptr,
+// }
 
+Semaphore :: vk.Semaphore
 Vertex_Input_Binding_Description :: vk.VertexInputBindingDescription
 Vertex_Input_Attribute_Description :: vk.VertexInputAttributeDescription
+Push_Constant_Range :: vk.PushConstantRange
+Device_Size :: vk.DeviceSize
+Command_Buffer :: vk.CommandBuffer
+Pipeline_Stage_Flags :: vk.PipelineStageFlags
 
 Vertex_Input_Description :: struct {
 	binding_description:    Vertex_Input_Binding_Description,
@@ -75,7 +86,7 @@ Pipeline_Set_Binding_Info :: struct {
 
 Pipeline_Resource :: union {
 	Texture,
-	Uniform_Buffer,
+	// Uniform_Buffer,
 	Buffer,
 }
 
@@ -87,10 +98,12 @@ Pipeline_Stage_Info :: struct {
 Pipeline_Set_Info :: struct {
 	set:           u32,
 	binding_infos: []Pipeline_Set_Binding_Info,
+	flags:         []vk.DescriptorBindingFlags,
 }
 
 Create_Pipeline_Info :: struct {
 	set_infos:                []Pipeline_Set_Info,
+	push_constants:           []Push_Constant_Range,
 	stage_infos:              []Pipeline_Stage_Info,
 	vertex_input_description: struct {
 		input_rate:             vk.VertexInputRate,
@@ -144,9 +157,22 @@ Compute_Pipeline :: struct {
 	create_info: ^Create_Compute_Pipeline_Info,
 }
 
+Push_Constant :: struct {
+	camera:   u32,
+	model:    u32,
+	material: u32,
+	pad0:     u32,
+	// uint camera;
+	// uint model;
+	// uint material;
+	// uint pad0;
+}
+
+Pipeline_Handle :: distinct hm.Handle
+
 Pipeline_Manager :: struct {
-	pipelines:          hm.Handle_Map(Graphics_Pipeline),
-	compute_pipelines:  hm.Handle_Map(Compute_Pipeline),
+	pipelines:          hm.Handle_Map(Graphics_Pipeline, Pipeline_Handle),
+	compute_pipelines:  hm.Handle_Map(Compute_Pipeline, Pipeline_Handle),
 	compiler:           shaderc.compilerT,
 	compiler_options:   shaderc.compileOptionsT,
 	enable_compilation: bool,
@@ -191,7 +217,10 @@ Graphics :: struct {
 	render_pass:               vk.RenderPass,
 	// Pipeline
 	pipeline_manager:          ^Pipeline_Manager,
+	// Descriptors
 	descriptor_pool:           vk.DescriptorPool,
+	// bindless_params:           ^Bindless_Params,
+	bindless:                  ^Bindless,
 	// Command pool
 	command_pool:              vk.CommandPool,
 	cmd:                       vk.CommandBuffer,
@@ -203,10 +232,39 @@ Graphics :: struct {
 	render_started:            bool,
 }
 
-BeginRenderError :: enum {
+Material :: struct {
+	color:      vec4,
+	pipeline_h: Pipeline_Handle,
+	texture_h:  Texture_Handle,
+	buffer_h:   Buffer_Handle,
+}
+
+// Camera_UBO :: struct {
+// 	view:       glsl.mat4,
+// 	projection: glsl.mat4,
+// }
+
+Model_UBO :: struct {
+	model:   glsl.mat4,
+	tangens: glsl.mat4,
+}
+
+Material_UBO :: struct {
+	color:   vec4,
+	texture: u32,
+	pad0:    u32,
+	pad1:    u32,
+	pad2:    u32,
+}
+
+Begin_Render_Error :: enum {
 	None,
 	OutOfDate,
 	NotEnded,
+}
+
+Frame_Data :: struct {
+	cmd: vk.CommandBuffer,
 }
 
 Render_Frame :: struct {
@@ -220,10 +278,10 @@ get_screen_size :: proc(g: ^Graphics) -> (width: u32, height: u32) {
 	return
 }
 
-begin_render :: proc(g: ^Graphics) -> BeginRenderError {
+begin_render :: proc(g: ^Graphics) -> (Frame_Data, Begin_Render_Error) {
 	if g.render_started {
 		log.error("Call end_render() after begin_render()")
-		return .NotEnded
+		return {}, .NotEnded
 	}
 	defer g.render_started = true
 
@@ -243,7 +301,7 @@ begin_render :: proc(g: ^Graphics) -> BeginRenderError {
 	#partial switch acquire_result {
 	case .ERROR_OUT_OF_DATE_KHR:
 		_recreate_swapchain(g)
-		return .OutOfDate
+		return {}, .OutOfDate
 
 	case .SUCCESS, .SUBOPTIMAL_KHR:
 	case:
@@ -272,10 +330,10 @@ begin_render :: proc(g: ^Graphics) -> BeginRenderError {
 	}
 	vk.CmdBeginRenderPass(g.cmd, &render_pass_info, .INLINE)
 
-	return .None
+	return Frame_Data{cmd = g.cmd}, .None
 }
 
-end_render :: proc(g: ^Graphics, wait_semaphores: []vk.Semaphore, wait_stages: []vk.PipelineStageFlags) {
+end_render :: proc(g: ^Graphics, wait_semaphores: []Semaphore, wait_stages: []Pipeline_Stage_Flags) {
 	if !g.render_started {
 		log.error("Call begin_render() before end_render()")
 	}
@@ -288,7 +346,7 @@ end_render :: proc(g: ^Graphics, wait_semaphores: []vk.Semaphore, wait_stages: [
 	required_wait_semaphores := concat(wait_semaphores, []vk.Semaphore{g.image_available_semaphore})
 	defer delete(required_wait_semaphores)
 
-	required_wait_stages := concat(wait_stages, []vk.PipelineStageFlags{{.COLOR_ATTACHMENT_OUTPUT}})
+	required_wait_stages := concat(wait_stages, []Pipeline_Stage_Flags{{.COLOR_ATTACHMENT_OUTPUT}})
 	defer delete(required_wait_stages)
 
 	submit_info := vk.SubmitInfo {
@@ -323,4 +381,26 @@ end_render :: proc(g: ^Graphics, wait_semaphores: []vk.Semaphore, wait_stages: [
 	}
 
 	defer g.render_started = false
+}
+
+get_width :: proc(g: ^Graphics) -> u32 {
+	return g.swapchain.extent.width
+}
+
+get_height :: proc(g: ^Graphics) -> u32 {
+	return g.swapchain.extent.height
+}
+
+set_full_viewport :: proc(g: ^Graphics, cmd: Command_Buffer) {
+	viewport := vk.Viewport {
+		width    = cast(f32)get_width(g),
+		height   = cast(f32)get_height(g),
+		maxDepth = 1.0,
+	}
+	vk.CmdSetViewport(cmd, 0, 1, &viewport)
+
+	scissor := vk.Rect2D {
+		extent = g.swapchain.extent,
+	}
+	vk.CmdSetScissor(cmd, 0, 1, &scissor)
 }

@@ -148,6 +148,7 @@ _swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
 	view := _create_image_view(swapchain._device, image, color_format, {.COLOR}, 1)
 
 	swapchain.color_image = Texture {
+		name            = "swapchain_image",
 		image           = image,
 		view            = view,
 		allocation      = allocation,

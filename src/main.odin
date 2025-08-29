@@ -81,12 +81,14 @@ main :: proc() {
 	glfw.SetKeyCallback(window, key_handler)
 	glfw.SetErrorCallback(glfw_error_callback)
 
-	e := new(eldr.Eldr)
-	defer eldr.destroy_eldr(e)
 
-	eldr.init_graphic(e, window)
+	eldr.init_graphic(window)
+	g := eldr.ctx.g // TODO:
+	defer eldr.destroy_eldr()
 
-	scene := create_room_scene(e)
+	scene := create_room_scene()
+	// scene := create_empty_scene()
+
 	scene.init(&scene)
 
 	for !glfw.WindowShouldClose(window) {
@@ -99,8 +101,8 @@ main :: proc() {
 		}
 
 		if (reload) {
-			vk.WaitForFences(e.g.device, 1, &e.g.fence, true, max(u64))
-			gfx.pipeline_hot_reload(e.g)
+			vk.WaitForFences(g.device, 1, &g.fence, true, max(u64))
+			gfx.pipeline_hot_reload(g)
 			reload = false
 		}
 
@@ -111,7 +113,7 @@ main :: proc() {
 		scene.update(&scene, dt)
 		scene.draw(&scene)
 	}
-	vk.DeviceWaitIdle(e.g.device)
+	vk.DeviceWaitIdle(g.device)
 
 	scene.destroy(&scene)
 

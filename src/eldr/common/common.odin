@@ -1,9 +1,12 @@
 package common
 
+import "core:math/linalg/glsl"
 import vk "vendor:vulkan"
 
-vec2 :: [2]f32
-vec3 :: [3]f32
+vec2 :: glsl.vec2
+vec3 :: glsl.vec3
+vec4 :: glsl.vec4
+mat4 :: glsl.mat4
 
 Vertex :: struct {
 	position:  vec3,

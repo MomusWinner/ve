@@ -5,6 +5,7 @@ import "core:mem/virtual"
 import "eldr"
 import gfx "eldr/graphics"
 import hm "eldr/handle_map"
+import vk "vendor:vulkan"
 
 default_shader_attribute :: proc() -> (eldr.VertexInputBindingDescription, [3]eldr.VertexInputAttributeDescription) {
 	bind_description := eldr.VertexInputBindingDescription {
@@ -37,39 +38,26 @@ default_shader_attribute :: proc() -> (eldr.VertexInputBindingDescription, [3]el
 	return bind_description, attribute_descriptions
 }
 
-create_default_pipeline :: proc(e: ^eldr.Eldr) -> hm.Handle {
+create_default_pipeline :: proc() -> eldr.Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	set_infos := []gfx.Pipeline_Set_Info {
-		gfx.Pipeline_Set_Info {
-			set = 0,
-			binding_infos = {
-				gfx.Pipeline_Set_Binding_Info {
-					binding = 0,
-					descriptor_type = .UNIFORM_BUFFER,
-					descriptor_count = 1,
-					stage_flags = {.VERTEX},
-				},
-				gfx.Pipeline_Set_Binding_Info {
-					binding = 1,
-					descriptor_type = .COMBINED_IMAGE_SAMPLER,
-					descriptor_count = 1,
-					stage_flags = {.FRAGMENT},
-				},
-			},
-		},
+	set_infos := []eldr.Pipeline_Set_Info{eldr.create_bindless_pipeline_set_info(context.temp_allocator)}
+
+	push_constants := []gfx.Push_Constant_Range { 	// const
+		{offset = 0, size = size_of(gfx.Push_Constant), stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS},
 	}
 
-	create_info := gfx.Create_Pipeline_Info {
-		set_infos = set_infos,
+	create_info := eldr.Create_Pipeline_Info {
+		set_infos = set_infos[:],
+		push_constants = push_constants,
 		vertex_input_description = {
 			input_rate = .VERTEX,
 			binding_description = vert_bind,
 			attribute_descriptions = vert_attr[:],
 		},
-		stage_infos = []gfx.Pipeline_Stage_Info {
-			gfx.Pipeline_Stage_Info{stage = {.VERTEX}, shader_path = "assets/shaders/default.vert"},
-			gfx.Pipeline_Stage_Info{stage = {.FRAGMENT}, shader_path = "assets/shaders/default.frag"},
+		stage_infos = []eldr.Pipeline_Stage_Info {
+			{stage = {.VERTEX}, shader_path = "assets/shaders/default.vert"},
+			{stage = {.FRAGMENT}, shader_path = "assets/shaders/default.frag"},
 		},
 		input_assembly = {topology = .TRIANGLE_LIST},
 		rasterizer = {polygonMode = .FILL, lineWidth = 1, cullMode = {}, frontFace = .CLOCKWISE},
@@ -87,7 +75,7 @@ create_default_pipeline :: proc(e: ^eldr.Eldr) -> hm.Handle {
 		},
 	}
 
-	handle, ok := gfx.create_graphics_pipeline(e.g, &create_info)
+	handle, ok := eldr.create_graphics_pipeline(&create_info)
 	if !ok {
 		log.info("couldn't create default pipeline")
 	}

@@ -14,11 +14,11 @@ pipeline_hot_reload :: proc(g: ^Graphics) {
 	_pipeline_manager_hot_reload(g.pipeline_manager, g)
 }
 
-get_graphics_pipeline :: proc(g: ^Graphics, handle: hm.Handle) -> (^Graphics_Pipeline, bool) {
+get_graphics_pipeline :: proc(g: ^Graphics, handle: Pipeline_Handle) -> (^Graphics_Pipeline, bool) {
 	return _pipeline_manager_get_graphics_pipeline(g.pipeline_manager, handle)
 }
 
-get_compute_pipeline :: proc(g: ^Graphics, handle: hm.Handle) -> (^Compute_Pipeline, bool) {
+get_compute_pipeline :: proc(g: ^Graphics, handle: Pipeline_Handle) -> (^Compute_Pipeline, bool) {
 	return _pipeline_manager_get_compute_pipeline(g.pipeline_manager, handle)
 }
 
@@ -55,19 +55,25 @@ _pipeline_manager_destroy :: proc(pm: ^Pipeline_Manager, device: vk.Device) {
 }
 
 @(private)
-_pipeline_manager_registe_graphics_pipeline :: proc(pm: ^Pipeline_Manager, pipeline: Graphics_Pipeline) -> hm.Handle {
+_pipeline_manager_registe_graphics_pipeline :: proc(
+	pm: ^Pipeline_Manager,
+	pipeline: Graphics_Pipeline,
+) -> Pipeline_Handle {
 	return hm.insert(&pm.pipelines, pipeline)
 }
 
 @(private)
-_pipeline_manager_registe_compute_pipeline :: proc(pm: ^Pipeline_Manager, pipeline: Compute_Pipeline) -> hm.Handle {
+_pipeline_manager_registe_compute_pipeline :: proc(
+	pm: ^Pipeline_Manager,
+	pipeline: Compute_Pipeline,
+) -> Pipeline_Handle {
 	return hm.insert(&pm.compute_pipelines, pipeline)
 }
 
 @(private = "file")
 _pipeline_manager_get_graphics_pipeline :: proc(
 	pm: ^Pipeline_Manager,
-	handle: hm.Handle,
+	handle: Pipeline_Handle,
 ) -> (
 	^Graphics_Pipeline,
 	bool,
@@ -76,7 +82,13 @@ _pipeline_manager_get_graphics_pipeline :: proc(
 }
 
 @(private = "file")
-_pipeline_manager_get_compute_pipeline :: proc(pm: ^Pipeline_Manager, handle: hm.Handle) -> (^Compute_Pipeline, bool) {
+_pipeline_manager_get_compute_pipeline :: proc(
+	pm: ^Pipeline_Manager,
+	handle: Pipeline_Handle,
+) -> (
+	^Compute_Pipeline,
+	bool,
+) {
 	return hm.get(&pm.compute_pipelines, handle)
 }
 

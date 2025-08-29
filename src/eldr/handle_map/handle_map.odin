@@ -1,9 +1,13 @@
 package handle_map
 
 import "base:builtin"
+import "core:fmt"
+import "core:math/linalg/glsl"
+import "core:slice"
+import "core:time"
 
-Handle_Map :: struct($T: typeid) {
-	handles:        [dynamic]Handle,
+Handle_Map :: struct($T: typeid, $HT: typeid) {
+	handles:        [dynamic]HT,
 	values:         [dynamic]T,
 	sparse_indices: [dynamic]Sparse_Index,
 	next:           u32,
@@ -19,21 +23,21 @@ Sparse_Index :: struct {
 	index_or_next: u32,
 }
 
-init :: proc(m: ^$M/Handle_Map($T), allocator := context.allocator) {
+init :: proc(m: ^Handle_Map($T, $HT), allocator := context.allocator) {
 	m.handles.allocator = allocator
 	m.values.allocator = allocator
 	m.sparse_indices.allocator = allocator
 	m.next = 0
 }
 
-destroy :: proc(m: ^$M/Handle_Map($T)) {
+destroy :: proc(m: ^Handle_Map($T, $HT)) {
 	clear(m)
 	delete(m.handles)
 	delete(m.values)
 	delete(m.sparse_indices)
 }
 
-clear :: proc(m: ^$M/Handle_Map($T)) {
+clear :: proc(m: ^$M/Handle_Map($T, $HT)) {
 	builtin.clear(&m.handles)
 	builtin.clear(&m.values)
 	builtin.clear(&m.sparse_indices)
@@ -41,7 +45,7 @@ clear :: proc(m: ^$M/Handle_Map($T)) {
 }
 
 @(require_results)
-has_handle :: proc(m: $M/Handle_Map($T), h: Handle) -> bool {
+has_handle :: proc(m: ^Handle_Map($T, $HT), h: HT) -> bool {
 	if h.index < u32(len(m.sparse_indices)) {
 		return m.sparse_indices[h.index].generation == h.generation
 	}
@@ -49,7 +53,7 @@ has_handle :: proc(m: $M/Handle_Map($T), h: Handle) -> bool {
 }
 
 @(require_results)
-get :: proc(m: ^$M/Handle_Map($T), h: Handle) -> (^T, bool) {
+get :: proc(m: ^Handle_Map($T, $HT), h: HT) -> (^T, bool) {
 	if h.index < u32(len(m.sparse_indices)) {
 		entry := m.sparse_indices[h.index]
 		if entry.generation == h.generation {
@@ -60,13 +64,13 @@ get :: proc(m: ^$M/Handle_Map($T), h: Handle) -> (^T, bool) {
 }
 
 @(require_results)
-insert :: proc(m: ^$M/Handle_Map($T), value: T) -> (handle: Handle) {
+insert :: proc(m: ^Handle_Map($T, $HT), value: T) -> (handle: HT) {
 	if m.next < u32(len(m.sparse_indices)) {
 		entry := &m.sparse_indices[m.next]
 		assert(entry.generation < max(u32), "Generation sparse indices overflow")
 
 		entry.generation += 1
-		handle = Handle {
+		handle = HT {
 			generation = entry.generation,
 			index      = m.next,
 		}
@@ -77,7 +81,7 @@ insert :: proc(m: ^$M/Handle_Map($T), value: T) -> (handle: Handle) {
 	} else {
 		assert(m.next < max(u32), "Index sparse indices overflow")
 
-		handle = Handle {
+		handle = HT {
 			index = u32(len(m.sparse_indices)),
 		}
 		append(&m.sparse_indices, Sparse_Index{index_or_next = u32(len(m.handles))})
@@ -88,7 +92,7 @@ insert :: proc(m: ^$M/Handle_Map($T), value: T) -> (handle: Handle) {
 	return
 }
 
-remove :: proc(m: ^$M/Handle_Map($T), h: Handle) -> (value: Maybe(T)) {
+remove :: proc(m: ^Handle_Map($T, $HT), h: HT) -> (value: Maybe(T)) {
 	if h.index < u32(len(m.sparse_indices)) {
 		entry := &m.sparse_indices[h.index]
 		if entry.generation != h.generation {
@@ -108,9 +112,8 @@ remove :: proc(m: ^$M/Handle_Map($T), h: Handle) -> (value: Maybe(T)) {
 	return
 }
 
-
 main :: proc() {
-	m: Handle_Map(f32)
+	m: Handle_Map(f32, Handle)
 	init(&m)
 	defer destroy(&m)
 
@@ -119,7 +122,7 @@ main :: proc() {
 
 	ptr, _ := get(&m, h)
 	assert(ptr^ == value)
-	assert(has_handle(m, h))
+	assert(has_handle(&m, h))
 	remove(&m, h)
-	assert(!has_handle(m, h))
+	assert(!has_handle(&m, h))
 }

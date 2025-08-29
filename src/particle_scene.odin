@@ -24,24 +24,24 @@ ParticleUniformBufferObject :: struct {
 
 
 ParticleSceneData :: struct {
-	uniform_buffer:      gfx.Uniform_Buffer,
+	uniform_buffer:      gfx.Buffer,
 	ssbo:                gfx.Buffer,
 	descriptor_set:      vk.DescriptorSet,
 	draw_descriptor_set: vk.DescriptorSet,
-	draw_pipeline_h:     gfx.Handle,
-	comp_pipeline_h:     gfx.Handle,
+	draw_pipeline_h:     gfx.Pipeline_Handle,
+	comp_pipeline_h:     gfx.Pipeline_Handle,
 	fence:               vk.Fence,
 	semaphore:           vk.Semaphore,
 	command_buffer:      vk.CommandBuffer,
 }
 
 create_particle_scene :: proc(e: ^eldr.Eldr) -> Scene {
-	return Scene{e = e, init = particle_scene_init, update = particle_scene_update, draw = particle_scene_draw}
+	return Scene{init = particle_scene_init, update = particle_scene_update, draw = particle_scene_draw}
 }
 
 particle_scene_init :: proc(s: ^Scene) {
 	renderer := new(ParticleSceneData)
-	g := s.e.g
+	g := eldr.ctx.g
 
 	particles := _generate_particles(cast(f32)g.swapchain.extent.width, cast(f32)g.swapchain.extent.height)
 	renderer.uniform_buffer = gfx.create_uniform_buffer(g, cast(vk.DeviceSize)size_of(f32))
@@ -95,13 +95,14 @@ particle_scene_init :: proc(s: ^Scene) {
 }
 
 particle_scene_update :: proc(s: ^Scene, dt: f64) {
+	e := &eldr.ctx
 	data := cast(^ParticleSceneData)s.data
 	_particle_update_uniform_buffer(data.uniform_buffer, cast(f32)dt)
-	particle_compute(s.e.g, data)
+	particle_compute(e.g, data)
 }
 
 particle_scene_draw :: proc(s: ^Scene) {
-	e := s.e
+	e := &eldr.ctx
 	data := cast(^ParticleSceneData)s.data
 
 	pipeline, ok := gfx.get_graphics_pipeline(e.g, data.draw_pipeline_h)
@@ -156,7 +157,7 @@ _generate_particles :: proc(width, height: f32) -> []Particle {
 }
 
 @(private = "file")
-_create_comp_pipeline :: proc(g: ^gfx.Graphics) -> gfx.Handle {
+_create_comp_pipeline :: proc(g: ^gfx.Graphics) -> gfx.Pipeline_Handle {
 	pipeline_binding_infos := make([]gfx.Pipeline_Set_Binding_Info, 2)
 	pipeline_binding_infos[0] = gfx.Pipeline_Set_Binding_Info {
 		binding          = 0,
@@ -189,7 +190,7 @@ _create_comp_pipeline :: proc(g: ^gfx.Graphics) -> gfx.Handle {
 }
 
 @(private = "file")
-_create_draw_pipeline :: proc(g: ^gfx.Graphics) -> gfx.Handle {
+_create_draw_pipeline :: proc(g: ^gfx.Graphics) -> gfx.Pipeline_Handle {
 	vert_bind, vert_attr := _particle_shader_attribute()
 
 	bindings := make([]gfx.Pipeline_Set_Binding_Info, 1)
@@ -253,7 +254,7 @@ _particle_shader_attribute :: proc(
 }
 
 @(private = "file")
-_particle_update_uniform_buffer :: proc(uniform_buffer: gfx.Uniform_Buffer, delta_time: f32) {
+_particle_update_uniform_buffer :: proc(uniform_buffer: gfx.Buffer, delta_time: f32) {
 	ubo := ParticleUniformBufferObject {
 		delta_time = delta_time,
 	}

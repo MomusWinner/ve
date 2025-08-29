@@ -6,7 +6,7 @@ import "core:os"
 import vk "vendor:vulkan"
 import "vma"
 
-create_texture :: proc(g: ^Graphics, image: Image, mip_levels: f32 = 0) -> Texture {
+create_texture :: proc(g: ^Graphics, image: Image, name: string = "empty", mip_levels: f32 = 0) -> Texture {
 	levels: f32 = 0
 	if mip_levels <= 0 {
 		// levels = math.floor_f32(math.log2(cast(f32)max(image.width, image.height))) + 1
@@ -22,7 +22,7 @@ create_texture :: proc(g: ^Graphics, image: Image, mip_levels: f32 = 0) -> Textu
 
 	// Staging Buffer
 	staging_buffer := _create_buffer(g, image_size, {.TRANSFER_SRC}, .AUTO, {.HOST_ACCESS_SEQUENTIAL_WRITE})
-	_fill_buffer(g, staging_buffer, image_size, image.data)
+	_fill_buffer(g, &staging_buffer, image_size, image.data)
 	_cmd_buffer_barrier(sc.command_buffer, staging_buffer, {.HOST_WRITE}, {.TRANSFER_READ}, {.HOST}, {.TRANSFER})
 	defer destroy_buffer(g, &staging_buffer)
 
@@ -92,6 +92,7 @@ create_texture :: proc(g: ^Graphics, image: Image, mip_levels: f32 = 0) -> Textu
 	must(vk.CreateSampler(g.device, &sampler_info, nil, &sampler))
 
 	return Texture {
+		name = name,
 		image = vk_image,
 		view = image_view,
 		sampler = sampler,

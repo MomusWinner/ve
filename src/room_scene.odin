@@ -6,27 +6,20 @@ import "core:math"
 import "core:math/linalg/glsl"
 import "core:math/rand"
 import "eldr"
-import gfx "eldr/graphics"
 import "vendor:glfw"
 import vk "vendor:vulkan"
 
-UniformBufferObject :: struct {
-	model:      glsl.mat4,
-	view:       glsl.mat4,
-	projection: glsl.mat4,
+Room_Scene_Data :: struct {
+	room_texture_h: eldr.Texture_Handle,
+	model:          eldr.Model,
+	material:       eldr.Material,
+	transform:      eldr.Transform,
+	camera:         eldr.Camera,
+	pipeline_h:     eldr.Pipeline_Handle,
 }
 
-RoomSceneData :: struct {
-	room_texture:   eldr.Texture,
-	room_ubo:       gfx.Uniform_Buffer,
-	room_model:     eldr.Model,
-	pipeline_h:     gfx.Handle,
-	descriptor_set: vk.DescriptorSet,
-}
-
-create_room_scene :: proc(e: ^eldr.Eldr) -> Scene {
+create_room_scene :: proc() -> Scene {
 	return Scene {
-		e = e,
 		init = room_scene_init,
 		update = room_scene_update,
 		draw = room_scene_draw,
@@ -35,106 +28,102 @@ create_room_scene :: proc(e: ^eldr.Eldr) -> Scene {
 }
 
 room_scene_init :: proc(s: ^Scene) {
-	e := s.e
-	room_data := new(RoomSceneData)
-	room_data.room_texture = eldr.load_texture(e, "./assets/room.png")
-	room_data.room_model = eldr.load_model(e, "./assets/room.obj")
-	room_data.room_ubo = gfx.create_uniform_buffer(e.g, cast(vk.DeviceSize)size_of(UniformBufferObject))
-	pipeline_h := create_default_pipeline(e)
+	room_data := new(Room_Scene_Data)
+
+	eldr.camera_init(&room_data.camera)
+	room_data.camera.position = {0, 0, 2}
+	room_data.camera.target = {0, 0, 0}
+	room_data.camera.up = {0, 1, 0}
+	room_data.camera.dirty = true
+
+	room_data.room_texture_h = eldr.load_texture("./assets/room.png")
+	room_data.model = eldr.load_model("./assets/room.obj")
+
+	pipeline_h := create_default_pipeline()
+
+	eldr.material_init(&room_data.material, pipeline_h)
+	room_data.material.texture_h = room_data.room_texture_h
+	room_data.material.color = {1, 1, 1, 1}
+	eldr.material_update(&room_data.material)
+	append(&room_data.model.materials, room_data.material)
+	append(&room_data.model.mesh_material, 0)
+
+	eldr.transform_init(&room_data.transform)
+
+	room_data.transform.position = {0, 0, 0}
+	room_data.transform.scale = {1, 1, 1}
+	room_data.transform.dirty = true
+
 	s.data = room_data
-
-	pipeline, _ := gfx.get_graphics_pipeline(s.e.g, room_data.pipeline_h)
-
-	room_data.descriptor_set = gfx.create_descriptor_set(
-		e.g,
-		pipeline,
-		pipeline.create_info.set_infos[0],
-		{room_data.room_ubo, room_data.room_texture},
-	)
-
-	init_unfiform_buffer(&room_data.room_ubo, s.e.g.swapchain.extent)
 }
 
 room_scene_update :: proc(s: ^Scene, dt: f64) {
-	e := s.e
-	data := cast(^RoomSceneData)s.data
-	update_unfiform_buffer(&data.room_ubo, s.e.g.swapchain.extent)
 }
 
 room_scene_draw :: proc(s: ^Scene) {
-	e := s.e
-	data := cast(^RoomSceneData)s.data
+	data := cast(^Room_Scene_Data)s.data
 
-	pipeline, ok := gfx.get_graphics_pipeline(e.g, data.pipeline_h)
+	pipeline := eldr.get_graphics_pipeline(data.pipeline_h)
 
-	gfx.begin_render(e.g)
-	// Begin gfx. ------------------------------
+	eldr.camera_apply(&data.camera, cast(f32)eldr.get_width(), cast(f32)eldr.get_height())
+	eldr.transform_apply(&data.transform)
 
-	viewport := vk.Viewport {
-		width    = f32(e.g.swapchain.extent.width),
-		height   = f32(e.g.swapchain.extent.height),
-		maxDepth = 1.0,
-	}
-	vk.CmdSetViewport(e.g.cmd, 0, 1, &viewport)
+	frame, _ := eldr.begin_render()
+	// Begin gfx.
+	// --------------------------------------------------------------------------------------------------------------------
 
-	scissor := vk.Rect2D {
-		extent = e.g.swapchain.extent,
-	}
-	vk.CmdSetScissor(e.g.cmd, 0, 1, &scissor)
+	eldr.set_full_viewport(frame.cmd)
+	eldr.draw_model(data.model, data.camera, data.transform, frame.cmd)
 
-	gfx.bind_pipeline(e.g, pipeline)
-
-	offset := vk.DeviceSize{}
-	vk.CmdBindVertexBuffers(e.g.cmd, 0, 1, &data.room_model.vbo.buffer, &offset)
-	vk.CmdBindIndexBuffer(e.g.cmd, data.room_model.ebo.buffer, 0, .UINT16)
-
-	gfx.bind_descriptor_set(e.g, pipeline, &data.descriptor_set)
-	vk.CmdDrawIndexed(e.g.cmd, cast(u32)len(data.room_model.indices), 1, 0, 0, 0)
-
-	// End gfx. ------------------------------
-	gfx.end_render(e.g, []vk.Semaphore{}, {})
-
+	// --------------------------------------------------------------------------------------------------------------------
+	// End gfx.
+	eldr.end_render()
 }
 
 room_scene_destroy :: proc(s: ^Scene) {
-	g := s.e.g
-	data := cast(^RoomSceneData)s.data
+	data := cast(^Room_Scene_Data)s.data
 
-	eldr.unload_texture(s.e, &data.room_texture)
-	gfx.destroy_uniform_buffer(g, &data.room_ubo)
-	eldr.destroy_model(s.e, &data.room_model)
+	eldr.unload_texture(data.room_texture_h)
+
+	eldr.destroy_model(&data.model)
 	free(data)
 }
 
-init_unfiform_buffer :: proc(buffer: ^gfx.Uniform_Buffer, extend: vk.Extent2D) {
-	ubo := UniformBufferObject{}
-	ubo.model = glsl.mat4Rotate(glsl.vec3{0, 0, 0}, glsl.radians_f32(0))
-	ubo.model = glsl.mat4Translate(glsl.vec3{0, 0, 0})
-	ubo.view = glsl.mat4LookAt(glsl.vec3{2, 2, 2}, glsl.vec3{0, 0, 0}, glsl.vec3{0, 0, 1})
-	ubo.projection = glsl.mat4Perspective(
-		glsl.radians_f32(45),
-		(cast(f32)extend.width / cast(f32)extend.height),
-		0.1,
-		10,
-	)
-	// NOTE: GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted
-	ubo.projection[1][1] *= -1
-
-	runtime.mem_copy(buffer.mapped, &ubo, size_of(ubo))
-}
-
-update_unfiform_buffer :: proc(buffer: ^gfx.Uniform_Buffer, extend: vk.Extent2D) {
-	ubo := UniformBufferObject{}
-	ubo.model = glsl.mat4Rotate(glsl.vec3{1, 1, 1}, cast(f32)glfw.GetTime() * glsl.radians_f32(90))
-	ubo.view = glsl.mat4LookAt(glsl.vec3{0, 0, 2}, glsl.vec3{0, 0, 0}, glsl.vec3{0, 1, 0})
-	ubo.projection = glsl.mat4Perspective(
-		glsl.radians_f32(45),
-		(cast(f32)extend.width / cast(f32)extend.height),
-		0.1,
-		10,
-	)
-	// NOTE: GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted
-	ubo.projection[1][1] *= -1
-
-	runtime.mem_copy(buffer.mapped, &ubo, size_of(ubo)) // TODO: create special function
-}
+// UniformBufferObject :: struct {
+// 	model:      glsl.mat4,
+// 	view:       glsl.mat4,
+// 	projection: glsl.mat4,
+// }
+//
+// init_unfiform_buffer :: proc(buffer: ^gfx.Buffer, extend: vk.Extent2D) {
+// 	ubo := UniformBufferObject{}
+// 	ubo.model = glsl.mat4Rotate(glsl.vec3{0, 0, 0}, glsl.radians_f32(0))
+// 	ubo.model = glsl.mat4Translate(glsl.vec3{0, 0, 0})
+// 	ubo.view = glsl.mat4LookAt(glsl.vec3{2, 2, 2}, glsl.vec3{0, 0, 0}, glsl.vec3{0, 0, 1})
+// 	ubo.projection = glsl.mat4Perspective(
+// 		glsl.radians_f32(45),
+// 		(cast(f32)extend.width / cast(f32)extend.height),
+// 		0.1,
+// 		10,
+// 	)
+// 	// NOTE: GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted
+// 	ubo.projection[1][1] *= -1
+//
+// 	runtime.mem_copy(buffer.mapped, &ubo, size_of(ubo))
+// }
+//
+// update_unfiform_buffer :: proc(buffer: ^gfx.Buffer, extend: vk.Extent2D) {
+// 	ubo := UniformBufferObject{}
+// 	ubo.model = glsl.mat4Rotate(glsl.vec3{1, 1, 1}, cast(f32)glfw.GetTime() * glsl.radians_f32(90))
+// 	ubo.view = glsl.mat4LookAt(glsl.vec3{0, 0, 2}, glsl.vec3{0, 0, 0}, glsl.vec3{0, 1, 0})
+// 	ubo.projection = glsl.mat4Perspective(
+// 		glsl.radians_f32(45),
+// 		(cast(f32)extend.width / cast(f32)extend.height),
+// 		0.1,
+// 		10,
+// 	)
+// 	// NOTE: GLM was originally designed for OpenGL, where the Y coordinate of the clip coordinates is inverted
+// 	ubo.projection[1][1] *= -1
+//
+// 	runtime.mem_copy(buffer.mapped, &ubo, size_of(ubo)) // TODO: create special function
+// }

@@ -50,7 +50,13 @@ _hash :: proc(a: int, b: int, c: int) -> u32 {
 	return h
 }
 
-import_obj :: proc(path: string, allocator := context.allocator) -> ([]Vertex, []u16, bool) {
+Mesh :: struct {
+	name:     string,
+	vertices: []Vertex,
+	indices:  []u16,
+}
+
+import_obj :: proc(path: string, allocator := context.allocator) -> ([]Mesh, bool) {
 	parse_f :: proc(s: string) -> (pos: int, tex_coord: int, norm: int) {
 		indexes := strings.split(s, "/", context.temp_allocator)
 		pos = -1 + strconv.atoi(indexes[0])
@@ -62,11 +68,14 @@ import_obj :: proc(path: string, allocator := context.allocator) -> ([]Vertex, [
 	data, ok := common.read_file(path, context.temp_allocator)
 	if !ok {
 		log.errorf("Couldn't load file by path: %s", path)
-		return nil, nil, false
+		return nil, false
 	}
 
 	data_string := string(data)
 
+	meshes := make([dynamic]Mesh, context.allocator)
+
+	name := ""
 	vertices := make([dynamic]Vertex, context.allocator)
 	indices := make([dynamic]u16, context.allocator)
 
@@ -78,6 +87,14 @@ import_obj :: proc(path: string, allocator := context.allocator) -> ([]Vertex, [
 
 	for line in strings.split_lines_iterator(&data_string) {
 		elements := strings.split(line, " ", context.temp_allocator)
+		if elements[0] == "o" {
+			if name != "" {
+				append(&meshes, Mesh{name = elements[1], vertices = vertices[:], indices = indices[:]})
+				clear(&vertices)
+				clear(&indices)
+			}
+			name = elements[1]
+		}
 		if elements[0] == "v" {
 			x := cast(f32)strconv.atof(elements[1])
 			y := cast(f32)strconv.atof(elements[2])
@@ -122,8 +139,9 @@ import_obj :: proc(path: string, allocator := context.allocator) -> ([]Vertex, [
 				panic("incorrect cout of elements in \"f\"")
 			}}
 	}
+	append(&meshes, Mesh{name = name, vertices = vertices[:], indices = indices[:]})
 
-	return vertices[:], indices[:], true
+	return meshes[:], true
 }
 
 
