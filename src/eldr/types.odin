@@ -30,9 +30,12 @@ Model :: gfx.Model
 Frame_Data :: gfx.Frame_Data
 Begin_Render_Error :: gfx.Begin_Render_Error
 
+Surface :: gfx.Surface
+
 Command_Buffer :: gfx.Command_Buffer
 Gfx_Size :: gfx.Device_Size
 Pipeline_Stage_Flags :: gfx.Pipeline_Stage_Flags
+Sync_Data :: gfx.Sync_Data
 Semaphore :: gfx.Semaphore
 VertexInputBindingDescription :: gfx.Vertex_Input_Binding_Description
 VertexInputAttributeDescription :: gfx.Vertex_Input_Attribute_Description

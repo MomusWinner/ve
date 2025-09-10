@@ -10,12 +10,14 @@ import "vendor:glfw"
 import vk "vendor:vulkan"
 
 Room_Scene_Data :: struct {
-	room_texture_h: eldr.Texture_Handle,
-	model:          eldr.Model,
-	material:       eldr.Material,
-	transform:      eldr.Transform,
-	camera:         eldr.Camera,
-	pipeline_h:     eldr.Pipeline_Handle,
+	room_texture_h:            eldr.Texture_Handle,
+	model:                     eldr.Model,
+	material:                  eldr.Material,
+	transform:                 eldr.Transform,
+	camera:                    eldr.Camera,
+	pipeline_h:                eldr.Pipeline_Handle,
+	surface:                   eldr.Surface,
+	postprocessing_pipeline_h: eldr.Pipeline_Handle,
 }
 
 create_room_scene :: proc() -> Scene {
@@ -54,6 +56,12 @@ room_scene_init :: proc(s: ^Scene) {
 	room_data.transform.scale = {1, 1, 1}
 	room_data.transform.dirty = true
 
+	eldr.surface_init(&room_data.surface, eldr.get_width(), eldr.get_height())
+	eldr.surface_add_color_attachment(&room_data.surface)
+	eldr.surface_add_depth_attachment(&room_data.surface)
+
+	room_data.postprocessing_pipeline_h = create_postprocessing_pipeline()
+
 	s.data = room_data
 }
 
@@ -73,11 +81,20 @@ room_scene_draw :: proc(s: ^Scene) {
 	// --------------------------------------------------------------------------------------------------------------------
 
 	eldr.cmd_set_full_viewport(frame.cmd)
+
+	// Surface
+	surface_frame := eldr.surface_begin(&data.surface)
 	eldr.draw_model(data.model, data.camera, data.transform, frame.cmd)
+	eldr.surface_end(&data.surface, surface_frame)
+
+	// Swapchain
+	eldr.begin_draw(frame)
+	eldr.surface_draw(&data.surface, frame, data.postprocessing_pipeline_h)
+	eldr.end_draw(frame)
 
 	// --------------------------------------------------------------------------------------------------------------------
 	// End gfx.
-	eldr.end_render()
+	eldr.end_render(frame)
 }
 
 room_scene_destroy :: proc(s: ^Scene) {
@@ -86,6 +103,8 @@ room_scene_destroy :: proc(s: ^Scene) {
 	eldr.unload_texture(data.room_texture_h)
 
 	eldr.destroy_model(&data.model)
+
+	eldr.surface_destroy(&data.surface)
 	free(data)
 }
 

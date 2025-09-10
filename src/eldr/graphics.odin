@@ -16,9 +16,10 @@ get_width :: proc() -> u32 {return gfx.get_width(ctx.g)}
 get_height :: proc() -> u32 {return gfx.get_height(ctx.g)}
 
 begin_render :: proc() -> (Frame_Data, Begin_Render_Error) {return gfx.begin_render(ctx.g)}
-end_render :: proc() {gfx.end_render(ctx.g, {})}
-end_render_wait :: proc(wait_semaphore_info: []vk.SemaphoreSubmitInfo) {
-	gfx.end_render(ctx.g, wait_semaphore_info)}
+end_render :: proc(frame_data: Frame_Data) {gfx.end_render(ctx.g, frame_data, {})}
+end_render_wait :: proc(frame_data: Frame_Data, sync_data: Sync_Data) {gfx.end_render(ctx.g, frame_data, sync_data)}
+begin_draw :: proc(frame_data: Frame_Data) {gfx.begin_draw(ctx.g, frame_data)}
+end_draw :: proc(frame_data: Frame_Data) {gfx.end_draw(ctx.g, frame_data)}
 
 cmd_set_full_viewport :: proc(cmd: Command_Buffer) {gfx.cmd_set_full_viewport(ctx.g, cmd)}
 
@@ -110,4 +111,24 @@ destroy_model :: proc(model: ^Model) {gfx.destroy_model(ctx.g, model)}
 
 draw_model :: proc(model: Model, camera: Camera, transform: Transform, cmd: Command_Buffer) {
 	gfx.draw_model(ctx.g, model, camera, transform, cmd)
+}
+
+// SURFACE
+
+surface_init :: proc(surface: ^Surface, width, height: u32, allocator := context.allocator) {
+	gfx.surface_init(surface, ctx.g, width, height, allocator)
+}
+
+surface_destroy :: proc(surface: ^Surface) {gfx.surface_destroy(surface, ctx.g)}
+
+surface_add_color_attachment :: proc(surface: ^Surface) {gfx.surface_add_color_attachment(surface, ctx.g)}
+
+surface_add_depth_attachment :: proc(surface: ^Surface) {gfx.surface_add_depth_attachment(surface, ctx.g)}
+
+surface_begin :: proc(surface: ^Surface) -> Frame_Data {return gfx.surface_begin(surface, ctx.g)}
+
+surface_end :: proc(surface: ^Surface, fame_data: Frame_Data) {gfx.surface_end(surface, fame_data)}
+
+surface_draw :: proc(surface: ^Surface, frame_data: Frame_Data, pipeline_h: Pipeline_Handle) {
+	gfx.surface_draw(surface, ctx.g, frame_data, pipeline_h)
 }

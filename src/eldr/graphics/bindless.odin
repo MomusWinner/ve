@@ -29,11 +29,14 @@ bindless_store_texture :: proc(g: ^Graphics, texture: Texture) -> Texture_Handle
 	return _bindless_store_texture(g.bindless, g.device, texture)
 }
 
-bindless_destroy_texture :: proc(g: ^Graphics, texture_h: Texture_Handle) {
+bindless_destroy_texture :: proc(g: ^Graphics, texture_h: Texture_Handle) -> bool {
 	texture, has_texture := _bindless_remove_texture(g.bindless, texture_h).?
 	if has_texture {
 		destroy_texture(g, &texture)
+		return true
 	}
+
+	return false
 }
 
 bindless_store_buffer :: proc(g: ^Graphics, buffer: Buffer) -> Buffer_Handle {
@@ -176,7 +179,7 @@ _bindless_remove_texture :: proc(bindless: ^Bindless, texture_h: Texture_Handle)
 	return hm.remove(&bindless.textures, texture_h)
 }
 
-_bindless_store_buffer :: proc(bindless: ^Bindless, device: vk.Device, buffer: Buffer) -> Buffer_Handle {
+_bindless_store_buffer :: proc(bindless: ^Bindless, device: vk.Device, buffer: Buffer) -> Buffer_Handle { 	// TODO: saved uniform buffers
 	handle := hm.insert(&bindless.buffers, buffer)
 
 	writes: [2]vk.WriteDescriptorSet

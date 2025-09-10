@@ -28,23 +28,13 @@ empty_scene_update :: proc(s: ^Scene, dt: f64) {
 empty_scene_draw :: proc(s: ^Scene) {
 	e := &eldr.ctx
 
-	gfx.begin_render(e.g)
+	frame_data, _ := eldr.begin_render()
 	// Begin gfx. ------------------------------
 
-	viewport := vk.Viewport {
-		width    = f32(e.g.swapchain.extent.width),
-		height   = f32(e.g.swapchain.extent.height),
-		maxDepth = 1.0,
-	}
-	vk.CmdSetViewport(e.g.cmd, 0, 1, &viewport)
-
-	scissor := vk.Rect2D {
-		extent = e.g.swapchain.extent,
-	}
-	vk.CmdSetScissor(e.g.cmd, 0, 1, &scissor)
+	eldr.cmd_set_full_viewport(frame_data.cmd)
 
 	// End gfx. ------------------------------
-	gfx.end_render(e.g, {})
+	eldr.end_render(frame_data)
 
 }
 

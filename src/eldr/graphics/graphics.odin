@@ -47,6 +47,7 @@ Texture :: struct {
 	image:           vk.Image,
 	view:            vk.ImageView,
 	sampler:         vk.Sampler,
+	format:          vk.Format,
 	allocation:      vma.Allocation,
 	allocation_info: vma.AllocationInfo,
 }
@@ -246,17 +247,30 @@ Graphics :: struct {
 	render_started:            bool,
 }
 
+Camera_UBO :: struct {
+	view:       mat4,
+	projection: mat4,
+}
+
+Camera :: struct {
+	view:       mat4,
+	projection: mat4,
+	position:   vec3,
+	target:     vec3,
+	up:         vec3,
+	fov:        f32,
+	near:       f32,
+	far:        f32,
+	buffer_h:   Buffer_Handle,
+	dirty:      bool,
+}
+
 Material :: struct {
 	color:      vec4,
 	pipeline_h: Pipeline_Handle,
 	texture_h:  Texture_Handle,
 	buffer_h:   Buffer_Handle,
 }
-
-// Camera_UBO :: struct {
-// 	view:       glsl.mat4,
-// 	projection: glsl.mat4,
-// }
 
 Model_UBO :: struct {
 	model:   glsl.mat4,
@@ -269,6 +283,19 @@ Material_UBO :: struct {
 	pad0:    u32,
 	pad1:    u32,
 	pad2:    u32,
+}
+
+Surface :: struct {
+	model:            Model,
+	color_attachment: Maybe(Surface_Attachment),
+	depth_attachment: Maybe(Surface_Attachment),
+	extent:           vk.Extent2D,
+}
+
+Surface_Attachment :: struct {
+	resource: Texture,
+	handle:   Texture_Handle,
+	info:     vk.RenderingAttachmentInfo,
 }
 
 Begin_Render_Error :: enum {
@@ -292,12 +319,18 @@ get_screen_size :: proc(g: ^Graphics) -> (width: u32, height: u32) {
 	return
 }
 
+Sync_Data :: struct {
+	wait_semaphore_infos: []vk.SemaphoreSubmitInfo,
+}
+
 begin_render :: proc(g: ^Graphics) -> (Frame_Data, Begin_Render_Error) {
 	if g.render_started {
 		log.error("Call end_render() after begin_render()")
 		return {}, .NotEnded
 	}
 	defer g.render_started = true
+
+	cmd := g.cmd
 
 	// Wait for previous frame
 	must(vk.WaitForFences(g.device, 1, &g.fence, true, max(u64)))
@@ -322,95 +355,25 @@ begin_render :: proc(g: ^Graphics) -> (Frame_Data, Begin_Render_Error) {
 	}
 
 	must(vk.ResetFences(g.device, 1, &g.fence))
-	must(vk.ResetCommandBuffer(g.cmd, {}))
+	must(vk.ResetCommandBuffer(cmd, {}))
 
 	begin_info := vk.CommandBufferBeginInfo {
 		sType = .COMMAND_BUFFER_BEGIN_INFO,
 	}
-	must(vk.BeginCommandBuffer(g.cmd, &begin_info))
+	must(vk.BeginCommandBuffer(cmd, &begin_info))
 
-	clear_color := vk.ClearValue {
-		color = {float32 = {0.0, 0.0, 0.0, 1.0}},
-	}
-
-	_transition_image_layout_from_cmd(
-		g.cmd,
-		g.swapchain.images[g.swapchain.image_index],
-		{.COLOR},
-		g.swapchain.format.format,
-		.UNDEFINED,
-		.COLOR_ATTACHMENT_OPTIMAL,
-		1,
-	)
-
-	color_attachment_info := vk.RenderingAttachmentInfo {
-		sType              = .RENDERING_ATTACHMENT_INFO,
-		pNext              = nil,
-		imageView          = g.swapchain.color_image.view,
-		imageLayout        = .ATTACHMENT_OPTIMAL,
-		resolveImageView   = g.swapchain.image_views[g.swapchain.image_index],
-		resolveImageLayout = .GENERAL,
-		loadOp             = .CLEAR,
-		storeOp            = .STORE,
-		clearValue         = clear_color,
-		resolveMode        = {.AVERAGE_KHR},
-	}
-
-	depth_stencil_clear_value := vk.ClearValue {
-		depthStencil = {1, 0},
-	}
-
-	depth_stencil_attachment_info := vk.RenderingAttachmentInfo {
-		sType       = .RENDERING_ATTACHMENT_INFO,
-		pNext       = nil,
-		imageView   = g.swapchain.depth_image.view,
-		imageLayout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-		loadOp      = .CLEAR,
-		storeOp     = .DONT_CARE,
-		clearValue  = depth_stencil_clear_value,
-	}
-
-	rendering_info := vk.RenderingInfo {
-		sType = .RENDERING_INFO,
-		renderArea = {extent = g.swapchain.extent},
-		layerCount = 1,
-		colorAttachmentCount = 1,
-		pColorAttachments = &color_attachment_info,
-		pDepthAttachment = &depth_stencil_attachment_info,
-	}
-
-	vk.CmdBeginRendering(g.cmd, &rendering_info)
-
-	return Frame_Data{cmd = g.cmd}, .None
+	return Frame_Data{cmd = cmd}, .None
 }
 
-end_render :: proc(g: ^Graphics, wait_semaphore_infos: []vk.SemaphoreSubmitInfo) { 	// TODO: replace vk.SemaphoreSubmitInfo
+end_render :: proc(g: ^Graphics, frame_data: Frame_Data, sync_data: Sync_Data) {
 	if !g.render_started {
 		log.error("Call begin_render() before end_render()")
 	}
 
-	// vk.CmdEndRenderPass(g.cmd)
-	vk.CmdEndRendering(g.cmd)
+	must(vk.EndCommandBuffer(frame_data.cmd))
 
-	sc := _cmd_single_begin_from_graphics(g)
-
-	_transition_image_layout_from_cmd(
-		g.cmd,
-		g.swapchain.images[g.swapchain.image_index],
-		{.COLOR},
-		g.swapchain.format.format,
-		.COLOR_ATTACHMENT_OPTIMAL,
-		.PRESENT_SRC_KHR,
-		1,
-	)
-
-	_cmd_single_end(sc)
-
-	must(vk.EndCommandBuffer(g.cmd))
-
-
-	required_wait_semaphore_infos := concat(
-		wait_semaphore_infos,
+	wait_semaphore_infos := concat(
+		sync_data.wait_semaphore_infos,
 		[]vk.SemaphoreSubmitInfo {
 			{
 				sType = .SEMAPHORE_SUBMIT_INFO,
@@ -424,7 +387,7 @@ end_render :: proc(g: ^Graphics, wait_semaphore_infos: []vk.SemaphoreSubmitInfo)
 
 	comand_buffer_info := vk.CommandBufferSubmitInfo {
 		sType         = .COMMAND_BUFFER_SUBMIT_INFO,
-		commandBuffer = g.cmd,
+		commandBuffer = frame_data.cmd,
 	}
 
 	signal_semaphore_info := vk.SemaphoreSubmitInfo {
@@ -434,8 +397,8 @@ end_render :: proc(g: ^Graphics, wait_semaphore_infos: []vk.SemaphoreSubmitInfo)
 
 	submit_info := vk.SubmitInfo2 {
 		sType                    = .SUBMIT_INFO_2,
-		waitSemaphoreInfoCount   = cast(u32)len(required_wait_semaphore_infos),
-		pWaitSemaphoreInfos      = raw_data(required_wait_semaphore_infos),
+		waitSemaphoreInfoCount   = cast(u32)len(wait_semaphore_infos),
+		pWaitSemaphoreInfos      = raw_data(wait_semaphore_infos),
 		commandBufferInfoCount   = 1,
 		pCommandBufferInfos      = &comand_buffer_info,
 		signalSemaphoreInfoCount = 1,
@@ -463,6 +426,74 @@ end_render :: proc(g: ^Graphics, wait_semaphore_infos: []vk.SemaphoreSubmitInfo)
 	}
 
 	defer g.render_started = false
+}
+
+begin_draw :: proc(g: ^Graphics, frame: Frame_Data) {
+	clear_color := vk.ClearValue {
+		color = {float32 = {0.0, 0.0, 0.0, 1.0}},
+	}
+
+	_transition_image_layout_from_cmd(
+		frame.cmd,
+		g.swapchain.images[g.swapchain.image_index],
+		{.COLOR},
+		g.swapchain.format.format,
+		.UNDEFINED,
+		.COLOR_ATTACHMENT_OPTIMAL,
+		1,
+	)
+
+	color_attachment_info := vk.RenderingAttachmentInfo {
+		sType              = .RENDERING_ATTACHMENT_INFO,
+		pNext              = nil,
+		imageView          = g.swapchain.color_image.view,
+		imageLayout        = .ATTACHMENT_OPTIMAL,
+		resolveMode        = {.AVERAGE_KHR},
+		resolveImageView   = g.swapchain.image_views[g.swapchain.image_index],
+		resolveImageLayout = .GENERAL,
+		loadOp             = .CLEAR,
+		storeOp            = .STORE,
+		clearValue         = clear_color,
+	}
+
+	depth_stencil_clear_value := vk.ClearValue {
+		depthStencil = {1, 0},
+	}
+
+	depth_stencil_attachment_info := vk.RenderingAttachmentInfo {
+		sType       = .RENDERING_ATTACHMENT_INFO,
+		pNext       = nil,
+		imageView   = g.swapchain.depth_image.view,
+		imageLayout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+		loadOp      = .CLEAR,
+		storeOp     = .DONT_CARE,
+		clearValue  = depth_stencil_clear_value,
+	}
+
+	rendering_info := vk.RenderingInfo {
+		sType = .RENDERING_INFO,
+		renderArea = {extent = g.swapchain.extent},
+		layerCount = 1,
+		colorAttachmentCount = 1,
+		pColorAttachments = &color_attachment_info,
+		pDepthAttachment = &depth_stencil_attachment_info,
+	}
+
+	vk.CmdBeginRendering(frame.cmd, &rendering_info)
+}
+
+end_draw :: proc(g: ^Graphics, frame: Frame_Data) {
+	vk.CmdEndRendering(frame.cmd)
+
+	_transition_image_layout_from_cmd(
+		frame.cmd,
+		g.swapchain.images[g.swapchain.image_index],
+		{.COLOR},
+		g.swapchain.format.format,
+		.COLOR_ATTACHMENT_OPTIMAL,
+		.PRESENT_SRC_KHR,
+		1,
+	)
 }
 
 get_width :: proc(g: ^Graphics) -> u32 {

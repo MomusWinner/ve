@@ -107,7 +107,7 @@ particle_scene_draw :: proc(s: ^Scene) {
 
 	pipeline, ok := gfx.get_graphics_pipeline(e.g, data.draw_pipeline_h)
 
-	gfx.begin_render(e.g)
+	frame_data, _ := gfx.begin_render(e.g)
 	// Begin gfx. ------------------------------
 
 	viewport := vk.Viewport {
@@ -130,7 +130,10 @@ particle_scene_draw :: proc(s: ^Scene) {
 	vk.CmdDraw(e.g.cmd, PARTICLE_COUNT, 1, 0, 0)
 
 	// End gfx. ------------------------------
-	gfx.end_render(e.g, []vk.SemaphoreSubmitInfo{{semaphore = data.semaphore, stageMask = {.VERTEX_INPUT}}})
+	sync_data := eldr.Sync_Data {
+		wait_semaphore_infos = []vk.SemaphoreSubmitInfo{{semaphore = data.semaphore, stageMask = {.VERTEX_INPUT}}},
+	}
+	gfx.end_render(e.g, frame_data, sync_data)
 }
 
 @(private = "file")

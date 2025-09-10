@@ -1,238 +1,177 @@
 package graphics
 
+import "base:runtime"
+import "core:log"
+import "core:mem"
 import vk "vendor:vulkan"
 import "vma"
 
-Surface :: struct {
-	color_image: Texture,
-	depth_image: Texture,
-	framebuffer: vk.Framebuffer,
-	render_pass: vk.RenderPass,
+surface_init :: proc(surface: ^Surface, g: ^Graphics, width, height: u32, allocator := context.allocator) {
+	surface.extent = {
+		width  = width,
+		height = height,
+	}
+
+	material: Material
+	material_init(&material, g, {})
+
+	vertices := make([]Vertex, 6, allocator)
+	vertices[0] = {{1.0, 1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0, 1.0}}
+	vertices[1] = {{1.0, -1.0, 0.0}, {1.0, 0.0}, {0.0, 1.0, 0.0}}
+	vertices[2] = {{-1.0, -1.0, 0.0}, {0.0, 0.0}, {1.0, 0.0, 0.0}}
+
+	vertices[3] = {{1.0, 1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0, 1.0}}
+	vertices[4] = {{-1.0, 1.0, 0.0}, {0.0, 1.0}, {1.0, 1.0, 1.0}}
+	vertices[5] = {{-1.0, -1.0, 0}, {0.0, 0.0}, {0.0, 1.0, 0.0}}
+
+	mesh := create_mesh(g, vertices, {})
+
+	meshes := make([]Mesh, 1)
+	meshes[0] = mesh
+
+	materials := make([dynamic]Material, 1, allocator)
+	materials[0] = material
+
+	mesh_material := make([dynamic]int, 1, allocator)
+	mesh_material[0] = 0
+
+	surface.model = create_model(meshes, materials, mesh_material)
 }
 
-surface_render_pass_color: vk.RenderPass
-surface_render_pass_color_depth: vk.RenderPass
-surface_render_pass_depth: vk.RenderPass
+surface_destroy :: proc(surface: ^Surface, g: ^Graphics) {
+	destroy_model(g, &surface.model)
+	color_attachment, has_color_attachment := surface.color_attachment.?
+	depth_attachment, has_depth_attachment := surface.depth_attachment.?
+	log.info("Has Depth")
+	log.info(has_depth_attachment)
 
-init_surface_render_passes :: proc(g: ^Graphics) {
-	color_attachment := vk.AttachmentDescription {
-		format         = g.swapchain.format.format,
-		samples        = g.msaa_samples,
-		loadOp         = .CLEAR,
-		storeOp        = .STORE,
-		stencilLoadOp  = .DONT_CARE,
-		stencilStoreOp = .DONT_CARE,
-		initialLayout  = .UNDEFINED,
-		finalLayout    = .COLOR_ATTACHMENT_OPTIMAL,
+	if has_color_attachment {
+		bindless_destroy_texture(g, color_attachment.handle)
 	}
 
-	color_attachment_ref := vk.AttachmentReference {
-		attachment = 0,
-		layout     = .COLOR_ATTACHMENT_OPTIMAL,
+	if has_depth_attachment {
+		destroy_texture(g, &depth_attachment.resource)
 	}
-
-	depth_attachment := vk.AttachmentDescription {
-		format         = _find_depth_format(g.physical_device),
-		samples        = g.msaa_samples,
-		loadOp         = .CLEAR,
-		storeOp        = .DONT_CARE,
-		stencilLoadOp  = .DONT_CARE,
-		stencilStoreOp = .DONT_CARE,
-		initialLayout  = .UNDEFINED,
-		finalLayout    = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-	}
-
-	depth_attachment_ref := vk.AttachmentReference {
-		attachment = 1,
-		layout     = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-	}
-
-	// color_attachment_resolve := vk.AttachmentDescription {
-	// 	format         = g.swapchain.format.format,
-	// 	samples        = {._1},
-	// 	loadOp         = .DONT_CARE,
-	// 	storeOp        = .STORE,
-	// 	stencilLoadOp  = .DONT_CARE,
-	// 	stencilStoreOp = .DONT_CARE,
-	// 	initialLayout  = .UNDEFINED,
-	// 	finalLayout    = .SHADER_READ_ONLY_OPTIMAL,
-	// }
-	//
-	// color_attachment_resolve_ref := vk.AttachmentReference {
-	// 	attachment = 2,
-	// 	layout     = .COLOR_ATTACHMENT_OPTIMAL,
-	// }
-
-	attachments := []vk.AttachmentDescription{color_attachment, depth_attachment}
-
-	subpass := vk.SubpassDescription {
-		pipelineBindPoint       = .GRAPHICS,
-		colorAttachmentCount    = 1,
-		pColorAttachments       = &color_attachment_ref,
-		pDepthStencilAttachment = &depth_attachment_ref,
-		// pResolveAttachments     = &color_attachment_resolve_ref,
-	}
-
-	dependency := vk.SubpassDependency {
-		srcSubpass    = vk.SUBPASS_EXTERNAL,
-		dstSubpass    = 0,
-		srcStageMask  = {.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS},
-		srcAccessMask = {},
-		dstStageMask  = {.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS},
-		dstAccessMask = {.COLOR_ATTACHMENT_WRITE, .DEPTH_STENCIL_ATTACHMENT_WRITE},
-	}
-
-	render_pass_info := vk.RenderPassCreateInfo {
-		sType           = .RENDER_PASS_CREATE_INFO,
-		attachmentCount = cast(u32)len(attachments),
-		pAttachments    = raw_data(attachments),
-		subpassCount    = 1,
-		pSubpasses      = &subpass,
-		dependencyCount = 1,
-		pDependencies   = &dependency,
-	}
-
-	must(vk.CreateRenderPass(g.device, &render_pass_info, nil, &surface_render_pass_color_depth))
-
-	render_pass_info.dependencyCount = 0
-	render_pass_info.pDependencies = nil
-
-	subpass.pDepthStencilAttachment = nil
-
-
 }
 
-create_surface :: proc(g: ^Graphics, color_attachment, depth_attachment: bool) -> Surface {
-	surface := Surface {
-		render_pass = _create_offscreen_render_pass(g),
+surface_add_color_attachment :: proc(surface: ^Surface, g: ^Graphics) {
+	color_resource := _create_surface_color_resource(g, g.swapchain.format.format, g.msaa_samples)
+
+	color_attachment := Surface_Attachment {
+		resource = color_resource,
+		info = {
+			sType = .RENDERING_ATTACHMENT_INFO,
+			pNext = nil,
+			imageView = color_resource.view,
+			imageLayout = .ATTACHMENT_OPTIMAL,
+			loadOp = .CLEAR,
+			storeOp = .STORE,
+			clearValue = vk.ClearValue{color = {float32 = {0.0, 0.0, 0.0, 1.0}}},
+		},
 	}
-	_create_offscreen_framebuffer(&surface, g, color_attachment, depth_attachment)
-	return surface
+	surface.color_attachment = color_attachment
+
+	color_attachment.handle = bindless_store_texture(g, color_resource)
+	surface.color_attachment = color_attachment
 }
 
-_create_offscreen_render_pass :: proc(g: ^Graphics) -> vk.RenderPass {
-	color_attachment := vk.AttachmentDescription {
-		format         = g.swapchain.format.format,
-		samples        = g.msaa_samples,
-		loadOp         = .CLEAR,
-		storeOp        = .STORE,
-		stencilLoadOp  = .DONT_CARE,
-		stencilStoreOp = .DONT_CARE,
-		initialLayout  = .UNDEFINED,
-		finalLayout    = .COLOR_ATTACHMENT_OPTIMAL,
+surface_add_depth_attachment :: proc(surface: ^Surface, g: ^Graphics) {
+	sc := _cmd_single_begin(g)
+	depth_resource := _create_surface_depth_resource(g, sc.command_buffer)
+	_cmd_single_end(sc)
+
+	depth_attachment := Surface_Attachment {
+		resource = depth_resource,
+		info = {
+			sType = .RENDERING_ATTACHMENT_INFO,
+			pNext = nil,
+			imageView = depth_resource.view,
+			imageLayout = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+			loadOp = .CLEAR,
+			storeOp = .DONT_CARE,
+			clearValue = vk.ClearValue{depthStencil = {1, 0}},
+		},
 	}
-
-	color_attachment_ref := vk.AttachmentReference {
-		attachment = 0,
-		layout     = .COLOR_ATTACHMENT_OPTIMAL,
-	}
-
-	depth_attachment := vk.AttachmentDescription {
-		format         = _find_depth_format(g.physical_device),
-		samples        = g.msaa_samples,
-		loadOp         = .CLEAR,
-		storeOp        = .DONT_CARE,
-		stencilLoadOp  = .DONT_CARE,
-		stencilStoreOp = .DONT_CARE,
-		initialLayout  = .UNDEFINED,
-		finalLayout    = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-	}
-
-	depth_attachment_ref := vk.AttachmentReference {
-		attachment = 1,
-		layout     = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-	}
-
-	// color_attachment_resolve := vk.AttachmentDescription {
-	// 	format         = g.swapchain.format.format,
-	// 	samples        = {._1},
-	// 	loadOp         = .DONT_CARE,
-	// 	storeOp        = .STORE,
-	// 	stencilLoadOp  = .DONT_CARE,
-	// 	stencilStoreOp = .DONT_CARE,
-	// 	initialLayout  = .UNDEFINED,
-	// 	finalLayout    = .SHADER_READ_ONLY_OPTIMAL,
-	// }
-	//
-	// color_attachment_resolve_ref := vk.AttachmentReference {
-	// 	attachment = 2,
-	// 	layout     = .COLOR_ATTACHMENT_OPTIMAL,
-	// }
-
-	attachments := []vk.AttachmentDescription{color_attachment, depth_attachment}
-
-	subpass := vk.SubpassDescription {
-		pipelineBindPoint       = .GRAPHICS,
-		colorAttachmentCount    = 1,
-		pColorAttachments       = &color_attachment_ref,
-		pDepthStencilAttachment = &depth_attachment_ref,
-		// pResolveAttachments     = &color_attachment_resolve_ref,
-	}
-
-	dependency := vk.SubpassDependency {
-		srcSubpass    = vk.SUBPASS_EXTERNAL,
-		dstSubpass    = 0,
-		srcStageMask  = {.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS},
-		srcAccessMask = {},
-		dstStageMask  = {.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS},
-		dstAccessMask = {.COLOR_ATTACHMENT_WRITE, .DEPTH_STENCIL_ATTACHMENT_WRITE},
-	}
-
-	render_pass_info := vk.RenderPassCreateInfo {
-		sType           = .RENDER_PASS_CREATE_INFO,
-		attachmentCount = cast(u32)len(attachments),
-		pAttachments    = raw_data(attachments),
-		subpassCount    = 1,
-		pSubpasses      = &subpass,
-		dependencyCount = 1,
-		pDependencies   = &dependency,
-	}
-
-	render_pass: vk.RenderPass
-
-	must(vk.CreateRenderPass(g.device, &render_pass_info, nil, &render_pass))
-
-	return render_pass
+	surface.depth_attachment = depth_attachment
 }
 
-_create_offscreen_framebuffer :: proc(surface: ^Surface, g: ^Graphics, color_attachment, depth_attachment: bool) {
-	assert(color_attachment || depth_attachment, "Couldn't create framebuffer without attachments")
-	attachments: []vk.ImageView
-	if color_attachment && depth_attachment {
-		surface.color_image = _create_surface_color_resource(g, g.swapchain.format.format, g.msaa_samples)
+surface_begin :: proc(surface: ^Surface, g: ^Graphics) -> Frame_Data {
+	cmd := g.cmd
 
-		cmd := _cmd_single_begin(g)
-		surface.depth_image = _create_surface_depth_resource(g, cmd.command_buffer)
-		_cmd_single_end(cmd)
+	color_attachment, has_color_attachment := surface.color_attachment.?
+	depth_attachment, has_depth_attachment := surface.depth_attachment.?
+	assert(has_color_attachment || has_depth_attachment, "Couldn't begin_surface() without attachments")
 
-		attachments = []vk.ImageView{surface.color_image.view, surface.depth_image.view}
-	} else if color_attachment {
-		surface.color_image = _create_surface_color_resource(g, g.swapchain.format.format, g.msaa_samples)
-		attachments = []vk.ImageView{surface.color_image.view}
-	} else if depth_attachment {
-		cmd := _cmd_single_begin(g)
-		surface.depth_image = _create_surface_depth_resource(g, cmd.command_buffer)
-		_cmd_single_end(cmd)
-
-		attachments = []vk.ImageView{surface.depth_image.view}
+	begin_info := vk.CommandBufferBeginInfo {
+		sType = .COMMAND_BUFFER_BEGIN_INFO,
 	}
 
-	frame_buffer := vk.FramebufferCreateInfo {
-		sType           = .FRAMEBUFFER_CREATE_INFO,
-		renderPass      = surface.render_pass,
-		attachmentCount = cast(u32)len(attachments),
-		pAttachments    = raw_data(attachments),
-		width           = get_width(g),
-		height          = get_height(g),
-		layers          = 1,
+	p_color_attachment: ^vk.RenderingAttachmentInfo = nil
+	p_depth_attachment: ^vk.RenderingAttachmentInfo = nil
+
+	if has_color_attachment {
+		_transition_image_layout_from_cmd(
+			cmd,
+			color_attachment.resource.image,
+			{.COLOR},
+			color_attachment.resource.format,
+			.UNDEFINED,
+			.COLOR_ATTACHMENT_OPTIMAL,
+			1,
+		)
+
+		p_color_attachment = &color_attachment.info
 	}
 
-	must(vk.CreateFramebuffer(g.device, &frame_buffer, nil, &surface.framebuffer))
+	if has_depth_attachment {
+		p_depth_attachment = &depth_attachment.info
+	}
+
+	rendering_info := vk.RenderingInfo {
+		sType = .RENDERING_INFO,
+		renderArea = {extent = surface.extent},
+		layerCount = 1,
+		colorAttachmentCount = 1,
+		pColorAttachments = p_color_attachment,
+		pDepthAttachment = p_depth_attachment,
+	}
+
+	vk.CmdBeginRendering(cmd, &rendering_info)
+
+	return Frame_Data{cmd = cmd}
 }
 
+surface_end :: proc(surface: ^Surface, frame_data: Frame_Data) {
+	vk.CmdEndRendering(frame_data.cmd)
+
+	color_attachment, has_color_attachment := surface.color_attachment.?
+	if has_color_attachment {
+		_transition_image_layout_from_cmd(
+			frame_data.cmd,
+			color_attachment.resource.image,
+			{.COLOR},
+			color_attachment.resource.format,
+			.COLOR_ATTACHMENT_OPTIMAL,
+			.SHADER_READ_ONLY_OPTIMAL,
+			1,
+		)
+	}
+}
+
+surface_draw :: proc(surface: ^Surface, g: ^Graphics, frame: Frame_Data, pipeline_h: Pipeline_Handle) {
+	camera := Camera{}
+
+	color_attachment, has_color := surface.color_attachment.?
+	assert(has_color)
+
+	surface.model.materials[0].pipeline_h = pipeline_h
+	surface.model.materials[0].texture_h = color_attachment.handle
+	material_update(&surface.model.materials[0], g)
+	draw_model(g, surface.model, camera, {}, frame.cmd)
+}
+
+@(private = "file")
 _create_surface_color_resource :: proc(g: ^Graphics, format: vk.Format, samples: vk.SampleCountFlags) -> Texture {
-	// color_format := swapchain.format.format
-
 	image, allocation, allocation_info := _create_image(
 		g,
 		get_width(g),
@@ -241,7 +180,7 @@ _create_surface_color_resource :: proc(g: ^Graphics, format: vk.Format, samples:
 		samples,
 		format,
 		vk.ImageTiling.OPTIMAL,
-		vk.ImageUsageFlags{.TRANSIENT_ATTACHMENT, .COLOR_ATTACHMENT},
+		vk.ImageUsageFlags{.COLOR_ATTACHMENT, .SAMPLED},
 		vma.MemoryUsage.AUTO_PREFER_DEVICE,
 		vma.AllocationCreateFlags{},
 	)
@@ -252,11 +191,13 @@ _create_surface_color_resource :: proc(g: ^Graphics, format: vk.Format, samples:
 		name = "surface color resource",
 		image = image,
 		view = view,
+		format = format,
 		allocation = allocation,
 		allocation_info = allocation_info,
 	}
 }
 
+@(private = "file")
 _create_surface_depth_resource :: proc(g: ^Graphics, cmd: Command_Buffer) -> Texture {
 	format := _find_depth_format(g.physical_device)
 	image, allocation, allocation_info := _create_image(
@@ -275,5 +216,11 @@ _create_surface_depth_resource :: proc(g: ^Graphics, cmd: Command_Buffer) -> Tex
 	_transition_image_layout(cmd, image, {.DEPTH}, format, .UNDEFINED, .DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1)
 
 	view := _create_image_view(g.device, image, format, {.DEPTH}, 1)
-	return Texture{image = image, view = view, allocation = allocation, allocation_info = allocation_info}
+	return Texture {
+		image = image,
+		view = view,
+		format = format,
+		allocation = allocation,
+		allocation_info = allocation_info,
+	}
 }

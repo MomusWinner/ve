@@ -51,6 +51,7 @@ init_graphic :: proc(g: ^Graphics, window: glfw.WindowHandle) {
 	g.bindless = new(Bindless)
 	_bindless_init(g.bindless, g.device, g.descriptor_pool)
 
+
 	// offscreen_render_pass := _create_offscren_render_pass(g)
 }
 

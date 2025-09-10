@@ -95,6 +95,7 @@ create_texture :: proc(g: ^Graphics, image: Image, name: string = "empty", mip_l
 		name = name,
 		image = vk_image,
 		view = image_view,
+		format = format,
 		sampler = sampler,
 		allocation = allocation,
 		allocation_info = allocation_info,
@@ -184,7 +185,33 @@ _transition_image_layout_from_cmd :: proc(
 
 		source_stage = {.COLOR_ATTACHMENT_OUTPUT}
 		destination_stage = {.BOTTOM_OF_PIPE}
+	} else if old_layout == .COLOR_ATTACHMENT_OPTIMAL && new_layout == .SHADER_READ_ONLY_OPTIMAL {
+		barrier_src_access_mask = {.COLOR_ATTACHMENT_WRITE}
+		barrier_dst_access_mask = {.MEMORY_READ}
 
+		source_stage = {.COLOR_ATTACHMENT_OUTPUT}
+		destination_stage = {.ALL_GRAPHICS}
+	} else if old_layout == .SHADER_READ_ONLY_OPTIMAL && new_layout == .COLOR_ATTACHMENT_OPTIMAL {
+		barrier_src_access_mask = {.MEMORY_READ}
+		barrier_dst_access_mask = {.COLOR_ATTACHMENT_WRITE}
+
+		source_stage = {.FRAGMENT_SHADER}
+		destination_stage = {.COLOR_ATTACHMENT_OUTPUT}
+
+
+		// } else if (old_layout == .COLOR_ATTACHMENT_OPTIMAL
+		// 		&& new_layout == .SHADER_READ_ONLY_OPTIMAL) {
+		// 	barrier.srcStageMask = {.TOP_OF_PIPE}
+		// 	barrier.srcAccessMask = {}
+		// 	barrier.dstStageMask = {.COLOR_ATTACHMENT_OUTPUT}
+		// 	barrier.dstAccessMask = {.MEMORY_READ}
+		// } else if (old_layout == .SHADER_READ_ONLY_OPTIMAL
+		// 		&& new_layout == .COLOR_ATTACHMENT_OPTIMAL) {
+		// 	barrier.srcStageMask = {.FRAGMENT_SHADER}
+		// 	barrier.srcAccessMask = {.MEMORY_READ}
+		// 	barrier.dstStageMask = {.COLOR_ATTACHMENT_OUTPUT}
+		// 	barrier.dstAccessMask = {.COLOR_ATTACHMENT_WRITE}
+		//
 	} else {
 		log.panicf("unsuported layout transition!\nold_layout %v \nnew_layout: %v", old_layout, new_layout)
 	}

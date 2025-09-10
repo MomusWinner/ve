@@ -80,8 +80,19 @@ _reload_graphics_pipeline :: proc(g: ^Graphics, pipeline: ^Graphics_Pipeline) {
 	}
 	defer _destroy_shader_stages(g.device, shader_stages)
 
+	depth_format := _find_depth_format(g.physical_device)
+
+	pipeline_rendering_info := vk.PipelineRenderingCreateInfo {
+		sType                   = .PIPELINE_RENDERING_CREATE_INFO,
+		// stencilAttachmentFormat = depth_format,
+		depthAttachmentFormat   = depth_format,
+		colorAttachmentCount    = 1,
+		pColorAttachmentFormats = &g.swapchain.format.format,
+	}
+
 	pipeline_info := vk.GraphicsPipelineCreateInfo {
 		sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
+		pNext               = &pipeline_rendering_info,
 		stageCount          = cast(u32)len(shader_stages),
 		pStages             = raw_data(shader_stages),
 		pVertexInputState   = _create_vertex_input_info(g, create_info),
@@ -93,7 +104,6 @@ _reload_graphics_pipeline :: proc(g: ^Graphics, pipeline: ^Graphics_Pipeline) {
 		pDynamicState       = _create_dynamic_info(g, create_info),
 		pDepthStencilState  = _create_depth_stencil_info(g, create_info),
 		layout              = pipeline.layout,
-		renderPass          = g.render_pass,
 		subpass             = 0,
 		basePipelineIndex   = -1,
 	}
@@ -195,20 +205,11 @@ _create_descriptor_set :: proc(
 _create_graphics_pipeline :: proc(
 	g: ^Graphics,
 	create_info: ^Create_Pipeline_Info,
-	maybe_surface: Maybe(Surface) = nil,
 	allocator := context.allocator,
 ) -> (
 	Graphics_Pipeline,
 	bool,
 ) {
-	render_pass: vk.RenderPass
-	surface, has_surface := maybe_surface.?
-	if has_surface {
-		render_pass = surface.render_pass
-	} else {
-		render_pass = g.render_pass
-	}
-
 	create_info := _copy_create_graphics_pipeline_info(create_info)
 
 	shader_stages, ok := _create_shader_stages(g.device, g.pipeline_manager, create_info, DEBUG)
@@ -245,13 +246,14 @@ _create_graphics_pipeline :: proc(
 		pDynamicState       = _create_dynamic_info(g, create_info),
 		pDepthStencilState  = _create_depth_stencil_info(g, create_info),
 		layout              = pipeline_layout,
-		// renderPass          = render_pass,
 		subpass             = 0,
 		basePipelineIndex   = -1,
 	}
 
 	vk_pipeline := vk.Pipeline{}
+
 	must(vk.CreateGraphicsPipelines(g.device, 0, 1, &pipeline_info, nil, &vk_pipeline))
+
 	pipeline := Graphics_Pipeline {
 		pipeline               = vk_pipeline,
 		create_info            = create_info,

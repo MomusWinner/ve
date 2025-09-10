@@ -6,24 +6,6 @@ DEFAULT_FOV :: 45
 DEFAULT_NEAR :: 0.01
 DEFAULT_FAR :: 100
 
-Camera_UBO :: struct {
-	view:       mat4,
-	projection: mat4,
-}
-
-Camera :: struct {
-	view:       mat4,
-	projection: mat4,
-	position:   vec3,
-	target:     vec3,
-	up:         vec3,
-	fov:        f32,
-	near:       f32,
-	far:        f32,
-	buffer_h:   Buffer_Handle,
-	dirty:      bool,
-}
-
 camera_init :: proc(camera: ^Camera, g: ^Graphics) {
 	camera.fov = DEFAULT_FOV
 	camera.near = DEFAULT_NEAR

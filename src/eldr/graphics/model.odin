@@ -11,44 +11,37 @@ Model :: struct {
 
 Mesh :: struct {
 	vbo:      Buffer,
-	ebo:      Buffer,
+	ebo:      Maybe(Buffer),
 	vertices: []Vertex,
 	indices:  []u16,
 }
 
-// TODO:
-// draw_model :: proc(g: ^Graphic, vbo: ^Buffer, ebo: ^Buffer) {
-// 	offset := vk.DeviceSize{}
-// 	vk.CmdBindVertexBuffers(g.command_buffer, 0, 1, &vbo.buffer, &offset)
-// 	vk.CmdBindIndexBuffer(g.command_buffer, ebo.buffer, 0, .UINT16)
-//
-// 	vk.CmdBindDescriptorSets(
-// 		g.command_buffer,
-// 		.GRAPHICS,
-// 		g.pipeline_layout,
-// 		0,
-// 		1,
-// 		&descriptor_set,
-// 		0,
-// 		nil,
-// 	)
-// 	// vk.CmdDraw(gr.command_buffer, 3, 1, 0, 0)
-// 	vk.CmdDrawIndexed(g.command_buffer, cast(u32)len(model.indices), 1, 0, 0, 0)
-// }
-
 create_mesh :: proc(g: ^Graphics, vertices: []Vertex, indices: []u16) -> Mesh {
+	assert(len(vertices) > 0)
 	vertices_size := cast(vk.DeviceSize)(size_of(vertices[0]) * len(vertices))
 	vertex_buffer := create_vertex_buffer(g, raw_data(vertices), vertices_size)
 
-	indices_size := cast(vk.DeviceSize)(size_of(indices[0]) * len(indices))
-	index_buffer := create_index_buffer(g, raw_data(indices), indices_size)
+	mesh := Mesh {
+		vertices = vertices,
+		indices  = indices,
+		vbo      = vertex_buffer,
+	}
 
-	return Mesh{vertices = vertices, indices = indices, vbo = vertex_buffer, ebo = index_buffer}
+	if len(indices) != 0 {
+		indices_size := cast(vk.DeviceSize)(size_of(indices[0]) * len(indices))
+		index_buffer := create_index_buffer(g, raw_data(indices), indices_size)
+		mesh.ebo = index_buffer
+	} else {
+		mesh.ebo = nil
+	}
+
+	return mesh
 }
 
 destroy_mesh :: proc(g: ^Graphics, mesh: ^Mesh) {
 	destroy_buffer(g, &mesh.vbo)
-	destroy_buffer(g, &mesh.ebo)
+	ebo, has_ebo := mesh.ebo.?
+	if has_ebo {destroy_buffer(g, &ebo)}
 	delete(mesh.vertices)
 	delete(mesh.indices)
 }
@@ -61,9 +54,13 @@ draw_mesh :: proc(
 	transform: Transform,
 	cmd: vk.CommandBuffer,
 ) {
+	ebo, has_ebo := mesh.ebo.?
+
 	offset := vk.DeviceSize{}
 	vk.CmdBindVertexBuffers(cmd, 0, 1, &mesh.vbo.buffer, &offset)
-	vk.CmdBindIndexBuffer(cmd, mesh.ebo.buffer, 0, .UINT16)
+	if has_ebo {
+		vk.CmdBindIndexBuffer(cmd, ebo.buffer, 0, .UINT16)
+	}
 
 	pipeline, ok := get_graphics_pipeline(g, material.pipeline_h)
 	if !ok {
@@ -82,7 +79,12 @@ draw_mesh :: proc(
 	}
 
 	vk.CmdPushConstants(cmd, pipeline.layout, vk.ShaderStageFlags_ALL_GRAPHICS, 0, size_of(Push_Constant), &const)
-	vk.CmdDrawIndexed(cmd, cast(u32)len(mesh.indices), 1, 0, 0, 0)
+
+	if has_ebo {
+		vk.CmdDrawIndexed(cmd, cast(u32)len(mesh.indices), 1, 0, 0, 0)
+	} else {
+		vk.CmdDraw(cmd, cast(u32)len(mesh.vertices), 1, 0, 0)
+	}
 }
 
 create_model :: proc(meshes: []Mesh, materials: [dynamic]Material, mesh_material: [dynamic]int) -> Model {
