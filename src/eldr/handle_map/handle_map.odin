@@ -92,7 +92,7 @@ insert :: proc(m: ^Handle_Map($T, $HT), value: T) -> (handle: HT) {
 	return
 }
 
-remove :: proc(m: ^Handle_Map($T, $HT), h: HT) -> (value: Maybe(T)) {
+remove :: proc(m: ^Handle_Map($T, $HT), h: HT) -> (value: T, ok: bool) {
 	if h.index < u32(len(m.sparse_indices)) {
 		entry := &m.sparse_indices[h.index]
 		if entry.generation != h.generation {
@@ -103,6 +103,7 @@ remove :: proc(m: ^Handle_Map($T, $HT), h: HT) -> (value: Maybe(T)) {
 		entry.index_or_next = m.next
 		m.next = h.index
 		value = m.values[index]
+		ok = true
 		unordered_remove(&m.handles, int(index))
 		unordered_remove(&m.values, int(index))
 		if index < u32(len(m.handles)) {

@@ -107,7 +107,7 @@ particle_scene_draw :: proc(s: ^Scene) {
 
 	pipeline, ok := gfx.get_graphics_pipeline(e.g, data.draw_pipeline_h)
 
-	frame_data, _ := gfx.begin_render(e.g)
+	frame_data := gfx.begin_render(e.g)
 	// Begin gfx. ------------------------------
 
 	viewport := vk.Viewport {

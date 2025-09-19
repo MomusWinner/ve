@@ -23,8 +23,7 @@ get_compute_pipeline :: proc(g: ^Graphics, handle: Pipeline_Handle) -> (^Compute
 }
 
 @(private)
-_pipeline_manager_new :: proc(enable_compilation: bool) -> ^Pipeline_Manager {
-	pm := new(Pipeline_Manager)
+_pipeline_manager_init :: proc(pm: ^Pipeline_Manager, enable_compilation: bool) {
 	pm.enable_compilation = enable_compilation
 	if pm.enable_compilation {
 		when DEBUG {
@@ -33,7 +32,6 @@ _pipeline_manager_new :: proc(enable_compilation: bool) -> ^Pipeline_Manager {
 			log.panic("Couldn't setup Pipeline_Manager compiler in RELEASE mode")
 		}
 	}
-	return pm
 }
 
 @(private)
@@ -50,8 +48,6 @@ _pipeline_manager_destroy :: proc(pm: ^Pipeline_Manager, device: vk.Device) {
 		shaderc.compile_options_release(pm.compiler_options)
 		shaderc.compiler_release(pm.compiler)
 	}
-
-	free(pm)
 }
 
 @(private)

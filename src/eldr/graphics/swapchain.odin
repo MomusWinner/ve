@@ -76,15 +76,13 @@ _swapchain_new :: proc(
 }
 
 @(private)
-_swapchain_setup :: proc(swapchain: ^Swap_Chain, render_pass: vk.RenderPass, command_buffer: vk.CommandBuffer) {
+_swapchain_setup :: proc(swapchain: ^Swap_Chain, command_buffer: vk.CommandBuffer) {
 	_swapchain_setup_color_resource(swapchain)
 	_swapchain_setupt_depth_buffer(swapchain, command_buffer)
-	_swapchain_setup_framebuffers(swapchain, render_pass)
 }
 
 @(private)
 _swapchain_destroy :: proc(swapchain: ^Swap_Chain) {
-	_swapchain_destroy_framebuffers(swapchain)
 	_destroy_texture_from_device(swapchain._device, swapchain._allocator, &swapchain.color_image)
 	_destroy_texture_from_device(swapchain._device, swapchain._allocator, &swapchain.depth_image)
 
@@ -122,7 +120,7 @@ _recreate_swapchain :: proc(g: ^Graphics) {
 	g.swapchain = _swapchain_new(g.window, g.allocator, g.physical_device, g.device, g.surface, g.msaa_samples)
 
 	sc := _cmd_single_begin(g)
-	_swapchain_setup(g.swapchain, g.render_pass, sc.command_buffer)
+	_swapchain_setup(g.swapchain, sc.command_buffer)
 	_cmd_single_end(sc)
 }
 
@@ -183,33 +181,6 @@ _swapchain_setupt_depth_buffer :: proc(swapchain: ^Swap_Chain, command_buffer: v
 		allocation      = allocation,
 		allocation_info = allocation_info,
 	}
-}
-
-@(private = "file")
-_swapchain_setup_framebuffers :: proc(swapchain: ^Swap_Chain, render_pass: vk.RenderPass) {
-	swapchain.frame_buffers = make([]vk.Framebuffer, len(swapchain.image_views))
-	for view, i in swapchain.image_views {
-		attachments := []vk.ImageView{swapchain.color_image.view, swapchain.depth_image.view, view}
-
-		frame_buffer := vk.FramebufferCreateInfo {
-			sType           = .FRAMEBUFFER_CREATE_INFO,
-			renderPass      = render_pass,
-			attachmentCount = cast(u32)len(attachments),
-			pAttachments    = raw_data(attachments),
-			width           = swapchain.extent.width,
-			height          = swapchain.extent.height,
-			layers          = 1,
-		}
-		// must(vk.CreateFramebuffer(swapchain._device, &frame_buffer, nil, &swapchain.frame_buffers[i]))
-	}
-}
-
-@(private = "file")
-_swapchain_destroy_framebuffers :: proc(swapchain: ^Swap_Chain) {
-	for frame_buffer in swapchain.frame_buffers {
-		vk.DestroyFramebuffer(swapchain._device, frame_buffer, nil)
-	}
-	delete(swapchain.frame_buffers)
 }
 
 @(private = "file")
@@ -275,8 +246,8 @@ _choose_swapchain_extent :: proc(window: glfw.WindowHandle, capabilities: vk.Sur
 	}
 
 	width, height := glfw.GetFramebufferSize(window)
-	return (vk.Extent2D {
-				width = clamp(u32(width), capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-				height = clamp(u32(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height),
-			})
+	return vk.Extent2D {
+		width = clamp(u32(width), capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+		height = clamp(u32(height), capabilities.minImageExtent.height, capabilities.maxImageExtent.height),
+	}
 }

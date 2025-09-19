@@ -28,9 +28,11 @@ Pipeline_Stage_Info :: gfx.Pipeline_Stage_Info
 
 Model :: gfx.Model
 Frame_Data :: gfx.Frame_Data
-Begin_Render_Error :: gfx.Begin_Render_Error
+Frame_Status :: gfx.Frame_Status
 
 Surface :: gfx.Surface
+Surface_Handle :: gfx.Surface_Handle
+
 
 Command_Buffer :: gfx.Command_Buffer
 Gfx_Size :: gfx.Device_Size

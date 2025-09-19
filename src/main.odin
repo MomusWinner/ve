@@ -106,8 +106,8 @@ main :: proc() {
 			reload = false
 		}
 
-		dt = glfw.GetTime() - last_time
-		last_time = glfw.GetTime()
+		// dt = glfw.GetTime() - last_time
+		// last_time = glfw.GetTime()
 		// log.info("FPS: ", 1 / dt)
 
 		scene.update(&scene, dt)

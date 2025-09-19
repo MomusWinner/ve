@@ -35,8 +35,11 @@ STORAGE_DESCRIPTOR_MAX :: 300
 DESCRIPTOR_SET_MAX :: 300
 
 vec2 :: common.vec2
+ivec2 :: common.ivec2
 vec3 :: common.vec3
+ivec3 :: common.ivec3
 vec4 :: common.vec4
+ivec4 :: common.ivec4
 mat4 :: common.mat4
 
 Vertex :: common.Vertex
@@ -60,11 +63,6 @@ Buffer :: struct {
 	mapped:          rawptr,
 }
 
-// Uniform_Buffer :: struct {
-// 	using base: Buffer,
-// 	mapped:     rawptr,
-// }
-
 Semaphore :: vk.Semaphore
 Vertex_Input_Binding_Description :: vk.VertexInputBindingDescription
 Vertex_Input_Attribute_Description :: vk.VertexInputAttributeDescription
@@ -87,7 +85,6 @@ Pipeline_Set_Binding_Info :: struct {
 
 Pipeline_Resource :: union {
 	Texture,
-	// Uniform_Buffer,
 	Buffer,
 }
 
@@ -159,15 +156,17 @@ Compute_Pipeline :: struct {
 	create_info: ^Create_Compute_Pipeline_Info,
 }
 
+Surface_Handle :: distinct hm.Handle
+
+Surface_Manager :: struct {
+	surfaces: hm.Handle_Map(Surface, Surface_Handle),
+}
+
 Push_Constant :: struct {
 	camera:   u32,
 	model:    u32,
 	material: u32,
 	pad0:     u32,
-	// uint camera;
-	// uint model;
-	// uint material;
-	// uint pad0;
 }
 
 Pipeline_Handle :: distinct hm.Handle
@@ -215,35 +214,26 @@ Graphics :: struct {
 	window:                    glfw.WindowHandle,
 	instance_info:             vk.InstanceCreateInfo,
 	instance:                  vk.Instance,
-	dbg_messenger:             vk.DebugUtilsMessengerEXT, // Null on release
+	dbg_messenger:             vk.DebugUtilsMessengerEXT, // TODO: Maybe()
 	allocator:                 vma.Allocator,
-
-	// Device
+	// 
 	msaa_samples:              vk.SampleCountFlags,
 	physical_device:           vk.PhysicalDevice,
 	physical_device_property:  vk.PhysicalDeviceProperties,
 	device:                    vk.Device,
-	// Surface
 	surface:                   vk.SurfaceKHR,
-	// Queue
 	graphics_queue:            vk.Queue,
-	present_queue:             vk.Queue, // Swap chain 
+	present_queue:             vk.Queue,
 	swapchain:                 ^Swap_Chain,
-	render_pass:               vk.RenderPass,
-	// Pipeline
 	pipeline_manager:          ^Pipeline_Manager,
-	// Descriptors
+	surface_manager:           ^Surface_Manager,
 	descriptor_pool:           vk.DescriptorPool,
-	// bindless_params:           ^Bindless_Params,
 	bindless:                  ^Bindless,
-	// Command pool
 	command_pool:              vk.CommandPool,
 	cmd:                       vk.CommandBuffer,
-	// Sync
 	image_available_semaphore: vk.Semaphore,
 	fence:                     vk.Fence,
-	// Flags
-	framebuffer_resized:       bool,
+	swapchain_resized:         bool,
 	render_started:            bool,
 }
 
@@ -252,10 +242,18 @@ Camera_UBO :: struct {
 	projection: mat4,
 }
 
+Camera_Extension :: struct {
+	data:                       Camera_Extension_Data,
+	get_view_matrix_multiplier: proc(data: Camera_Extension_Data) -> mat4,
+	test:                       f32,
+}
+
 Camera :: struct {
 	view:       mat4,
 	projection: mat4,
 	position:   vec3,
+	aspect:     f32,
+	zoom:       vec3,
 	target:     vec3,
 	up:         vec3,
 	fov:        f32,
@@ -263,6 +261,14 @@ Camera :: struct {
 	far:        f32,
 	buffer_h:   Buffer_Handle,
 	dirty:      bool,
+	extension:  Maybe(Camera_Extension),
+}
+
+Camera_Extension_Data :: union {
+	Resoulution_Independed_Ext,
+}
+
+Empty_Camera_Ext :: struct {
 }
 
 Material :: struct {
@@ -287,7 +293,7 @@ Material_UBO :: struct {
 
 Surface :: struct {
 	model:            Model,
-	color_attachment: Maybe(Surface_Attachment),
+	color_attachment: Maybe(Surface_Color_Attachment),
 	depth_attachment: Maybe(Surface_Attachment),
 	extent:           vk.Extent2D,
 }
@@ -298,19 +304,29 @@ Surface_Attachment :: struct {
 	info:     vk.RenderingAttachmentInfo,
 }
 
-Begin_Render_Error :: enum {
-	None,
-	OutOfDate,
-	NotEnded,
+Surface_Color_Attachment :: struct {
+	using base:       Surface_Attachment,
+	resolve_resource: Texture,
+	resolve_handle:   Texture_Handle,
+}
+
+Frame_Status :: enum {
+	Success,
+	IncorrectSwapchainSize,
 }
 
 Frame_Data :: struct {
-	cmd: vk.CommandBuffer,
+	cmd:    vk.CommandBuffer,
+	status: Frame_Status,
 }
 
 Render_Frame :: struct {
 	state:       bool,
 	image_index: u32,
+}
+
+Sync_Data :: struct {
+	wait_semaphore_infos: []vk.SemaphoreSubmitInfo,
 }
 
 get_screen_size :: proc(g: ^Graphics) -> (width: u32, height: u32) {
@@ -319,18 +335,36 @@ get_screen_size :: proc(g: ^Graphics) -> (width: u32, height: u32) {
 	return
 }
 
-Sync_Data :: struct {
-	wait_semaphore_infos: []vk.SemaphoreSubmitInfo,
+get_screen_width :: proc(g: ^Graphics) -> u32 {
+	return g.swapchain.extent.width
 }
 
-begin_render :: proc(g: ^Graphics) -> (Frame_Data, Begin_Render_Error) {
-	if g.render_started {
-		log.error("Call end_render() after begin_render()")
-		return {}, .NotEnded
-	}
+get_screen_height :: proc(g: ^Graphics) -> u32 {
+	return g.swapchain.extent.height
+}
+
+get_device_width :: proc(g: ^Graphics) -> u32 {
+	width, height := glfw.GetFramebufferSize(g.window)
+	return cast(u32)width
+}
+
+get_device_height :: proc(g: ^Graphics) -> u32 {
+	width, height := glfw.GetFramebufferSize(g.window)
+	return cast(u32)height
+}
+
+screen_resized :: proc(g: ^Graphics) -> bool {
+	return g.swapchain_resized
+}
+
+begin_render :: proc(g: ^Graphics) -> Frame_Data {
+	assert(!g.render_started, "Call end_render() after begin_render()")
 	defer g.render_started = true
 
-	cmd := g.cmd
+	frame_data := Frame_Data {
+		cmd    = g.cmd,
+		status = .Success,
+	}
 
 	// Wait for previous frame
 	must(vk.WaitForFences(g.device, 1, &g.fence, true, max(u64)))
@@ -347,28 +381,30 @@ begin_render :: proc(g: ^Graphics) -> (Frame_Data, Begin_Render_Error) {
 
 	#partial switch acquire_result {
 	case .ERROR_OUT_OF_DATE_KHR:
-		_recreate_swapchain(g)
-		return {}, .OutOfDate
+		frame_data.status = .IncorrectSwapchainSize
+		return {}
 	case .SUCCESS, .SUBOPTIMAL_KHR:
 	case:
 		log.panicf("acquire next image failure: %v", acquire_result)
 	}
 
 	must(vk.ResetFences(g.device, 1, &g.fence))
-	must(vk.ResetCommandBuffer(cmd, {}))
+	must(vk.ResetCommandBuffer(frame_data.cmd, {}))
 
 	begin_info := vk.CommandBufferBeginInfo {
 		sType = .COMMAND_BUFFER_BEGIN_INFO,
 	}
-	must(vk.BeginCommandBuffer(cmd, &begin_info))
+	must(vk.BeginCommandBuffer(frame_data.cmd, &begin_info))
 
-	return Frame_Data{cmd = cmd}, .None
+	return frame_data
 }
 
 end_render :: proc(g: ^Graphics, frame_data: Frame_Data, sync_data: Sync_Data) {
 	if !g.render_started {
 		log.error("Call begin_render() before end_render()")
 	}
+
+	frame_data := frame_data
 
 	must(vk.EndCommandBuffer(frame_data.cmd))
 
@@ -417,12 +453,20 @@ end_render :: proc(g: ^Graphics, frame_data: Frame_Data, sync_data: Sync_Data) {
 	present_result := vk.QueuePresentKHR(g.present_queue, &present_info)
 
 	switch {
-	case present_result == .ERROR_OUT_OF_DATE_KHR || present_result == .SUBOPTIMAL_KHR || g.framebuffer_resized:
-		g.framebuffer_resized = false
-		_recreate_swapchain(g)
+	case present_result == .ERROR_OUT_OF_DATE_KHR || present_result == .SUBOPTIMAL_KHR:
+		frame_data.status = .IncorrectSwapchainSize
 	case present_result == .SUCCESS:
 	case:
 		log.panicf("vulkan: present failure: %v", present_result)
+	}
+
+	if g.swapchain_resized {
+		g.swapchain_resized = false
+	}
+
+	if frame_data.status == .IncorrectSwapchainSize {
+		g.swapchain_resized = true
+		on_screen_resized(g)
 	}
 
 	defer g.render_started = false
@@ -496,18 +540,10 @@ end_draw :: proc(g: ^Graphics, frame: Frame_Data) {
 	)
 }
 
-get_width :: proc(g: ^Graphics) -> u32 {
-	return g.swapchain.extent.width
-}
-
-get_height :: proc(g: ^Graphics) -> u32 {
-	return g.swapchain.extent.height
-}
-
 cmd_set_full_viewport :: proc(g: ^Graphics, cmd: Command_Buffer) {
 	viewport := vk.Viewport {
-		width    = cast(f32)get_width(g),
-		height   = cast(f32)get_height(g),
+		width    = cast(f32)get_screen_width(g),
+		height   = cast(f32)get_screen_height(g),
 		maxDepth = 1.0,
 	}
 	vk.CmdSetViewport(cmd, 0, 1, &viewport)
@@ -516,4 +552,9 @@ cmd_set_full_viewport :: proc(g: ^Graphics, cmd: Command_Buffer) {
 		extent = g.swapchain.extent,
 	}
 	vk.CmdSetScissor(cmd, 0, 1, &scissor)
+}
+
+on_screen_resized :: proc(g: ^Graphics) {
+	_recreate_swapchain(g)
+	_surface_manager_recreate_surfaces(g.surface_manager, g)
 }

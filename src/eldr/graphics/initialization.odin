@@ -29,14 +29,16 @@ set_logger :: proc(logger: log.Logger) {
 init_graphic :: proc(g: ^Graphics, window: glfw.WindowHandle) {
 	g.window = window
 
-	g.pipeline_manager = _pipeline_manager_new(ODIN_DEBUG)
+	g.pipeline_manager = new(Pipeline_Manager)
+	_pipeline_manager_init(g.pipeline_manager, ODIN_DEBUG)
+	g.surface_manager = new(Surface_Manager)
+	_surface_manager_init(g.surface_manager)
 	_create_instance(g)
 	_create_surface(g)
 	_pick_physical_device(g)
 	_create_logical_device(g)
 	_create_vma_allocator(g)
 	g.swapchain = _swapchain_new(g.window, g.allocator, g.physical_device, g.device, g.surface, g.msaa_samples)
-	// _create_render_pass(g)
 	_create_descriptor_pool(g)
 	_create_command_pool(g)
 
@@ -44,15 +46,12 @@ init_graphic :: proc(g: ^Graphics, window: glfw.WindowHandle) {
 	_create_sync_obj(g)
 
 	sc := _cmd_single_begin(g)
-	_swapchain_setup(g.swapchain, g.render_pass, sc.command_buffer)
+	_swapchain_setup(g.swapchain, sc.command_buffer)
 	_cmd_single_end(sc)
 
 
 	g.bindless = new(Bindless)
 	_bindless_init(g.bindless, g.device, g.descriptor_pool)
-
-
-	// offscreen_render_pass := _create_offscren_render_pass(g)
 }
 
 destroy_graphic :: proc(g: ^Graphics) {
@@ -61,10 +60,12 @@ destroy_graphic :: proc(g: ^Graphics) {
 	_destroy_sync_obj(g)
 	_destroy_command_pool(g)
 	_destroy_descriptor_pool(g)
-	// _destroy_render_pass(g)
 	_swapchain_destroy(g.swapchain)
 	vma.DestroyAllocator(g.allocator)
 	_pipeline_manager_destroy(g.pipeline_manager, g.device)
+	free(g.pipeline_manager)
+	_surface_manager_destroy(g.surface_manager, g)
+	free(g.surface_manager)
 	_destroy_logical_device(g)
 	_destroy_surface(g)
 	_destroy_instance(g)
@@ -353,18 +354,7 @@ _create_logical_device :: proc(g: ^Graphics) {
 		)
 	}
 
-	// deviceFeatrues := vk.PhysicalDeviceFeatures {
-	// 	samplerAnisotropy = true,
-	// }
-	//
-	// features2 := vk.PhysicalDeviceFeatures2 {
-	// 	sType    = .PHYSICAL_DEVICE_FEATURES_2,
-	// 	features = deviceFeatrues,
-	// }
-
 	features: Physical_Device_Features
-	//
-	// get_required_physical_device_features(&features)
 
 	get_required_physical_device_features(&features)
 
@@ -376,7 +366,6 @@ _create_logical_device :: proc(g: ^Graphics) {
 		enabledLayerCount       = g.instance_info.enabledLayerCount,
 		ppEnabledLayerNames     = g.instance_info.ppEnabledLayerNames,
 		ppEnabledExtensionNames = raw_data(DEVICE_EXTENSIONS),
-		// pEnabledFeatures        = &features.features.features,
 		enabledExtensionCount   = u32(len(DEVICE_EXTENSIONS)),
 	}
 
@@ -403,107 +392,6 @@ _create_vma_allocator :: proc(g: ^Graphics) {
 @(private = "file")
 _destroy_logical_device :: proc(g: ^Graphics) {
 	vk.DestroyDevice(g.device, nil)
-}
-
-@(private = "file")
-_create_render_pass :: proc(g: ^Graphics) {
-	color_attachment := vk.AttachmentDescription2 {
-		sType          = .ATTACHMENT_DESCRIPTION_2,
-		format         = g.swapchain.format.format,
-		samples        = g.msaa_samples,
-		loadOp         = .CLEAR,
-		storeOp        = .STORE,
-		stencilLoadOp  = .DONT_CARE,
-		stencilStoreOp = .DONT_CARE,
-		initialLayout  = .UNDEFINED,
-		finalLayout    = .COLOR_ATTACHMENT_OPTIMAL,
-	}
-
-	color_attachment_ref := vk.AttachmentReference2 {
-		sType      = .ATTACHMENT_REFERENCE_2,
-		attachment = 0,
-		layout     = .COLOR_ATTACHMENT_OPTIMAL,
-	}
-
-	depth_attachment := vk.AttachmentDescription2 {
-		sType          = .ATTACHMENT_DESCRIPTION_2,
-		format         = _find_depth_format(g.physical_device),
-		samples        = g.msaa_samples,
-		loadOp         = .CLEAR,
-		storeOp        = .DONT_CARE,
-		stencilLoadOp  = .DONT_CARE,
-		stencilStoreOp = .DONT_CARE,
-		initialLayout  = .UNDEFINED,
-		finalLayout    = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-	}
-
-	depth_attachment_ref := vk.AttachmentReference2 {
-		sType      = .ATTACHMENT_REFERENCE_2,
-		attachment = 1,
-		layout     = .DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-	}
-
-	color_attachment_resolve := vk.AttachmentDescription2 {
-		sType          = .ATTACHMENT_DESCRIPTION_2,
-		format         = g.swapchain.format.format,
-		samples        = {._1},
-		loadOp         = .DONT_CARE,
-		storeOp        = .STORE,
-		stencilLoadOp  = .DONT_CARE,
-		stencilStoreOp = .DONT_CARE,
-		initialLayout  = .UNDEFINED,
-		finalLayout    = .PRESENT_SRC_KHR,
-	}
-
-	color_attachment_resolve_ref := vk.AttachmentReference2 {
-		sType      = .ATTACHMENT_REFERENCE_2,
-		attachment = 2,
-		layout     = .COLOR_ATTACHMENT_OPTIMAL,
-	}
-
-	attachments := []vk.AttachmentDescription2{color_attachment, depth_attachment, color_attachment_resolve}
-
-	subpass := vk.SubpassDescription2 {
-		sType                   = .SUBPASS_DESCRIPTION_2,
-		pipelineBindPoint       = .GRAPHICS,
-		colorAttachmentCount    = 1,
-		pColorAttachments       = &color_attachment_ref,
-		pDepthStencilAttachment = &depth_attachment_ref,
-		pResolveAttachments     = &color_attachment_resolve_ref,
-	}
-
-	memory_barrier := vk.MemoryBarrier2 {
-		sType         = .MEMORY_BARRIER_2,
-		pNext         = nil,
-		srcStageMask  = {.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS},
-		srcAccessMask = {},
-		dstStageMask  = {.COLOR_ATTACHMENT_OUTPUT, .EARLY_FRAGMENT_TESTS},
-		dstAccessMask = {.COLOR_ATTACHMENT_WRITE, .DEPTH_STENCIL_ATTACHMENT_WRITE},
-	}
-
-	dependency := vk.SubpassDependency2 {
-		sType      = .SUBPASS_DEPENDENCY_2,
-		pNext      = &memory_barrier,
-		srcSubpass = vk.SUBPASS_EXTERNAL,
-		dstSubpass = 0,
-	}
-
-	render_pass := vk.RenderPassCreateInfo2 {
-		sType           = .RENDER_PASS_CREATE_INFO_2,
-		attachmentCount = cast(u32)len(attachments),
-		pAttachments    = raw_data(attachments),
-		subpassCount    = 1,
-		pSubpasses      = &subpass,
-		dependencyCount = 1,
-		pDependencies   = &dependency,
-	}
-
-	must(vk.CreateRenderPass2(g.device, &render_pass, nil, &g.render_pass))
-}
-
-@(private = "file")
-_destroy_render_pass :: proc(g: ^Graphics) {
-	vk.DestroyRenderPass(g.device, g.render_pass, nil)
 }
 
 @(private = "file")

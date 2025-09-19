@@ -30,7 +30,7 @@ bindless_store_texture :: proc(g: ^Graphics, texture: Texture) -> Texture_Handle
 }
 
 bindless_destroy_texture :: proc(g: ^Graphics, texture_h: Texture_Handle) -> bool {
-	texture, has_texture := _bindless_remove_texture(g.bindless, texture_h).?
+	texture, has_texture := _bindless_remove_texture(g.bindless, texture_h)
 	if has_texture {
 		destroy_texture(g, &texture)
 		return true
@@ -44,7 +44,7 @@ bindless_store_buffer :: proc(g: ^Graphics, buffer: Buffer) -> Buffer_Handle {
 }
 
 bindless_destroy_buffer :: proc(g: ^Graphics, buffer_h: Buffer_Handle) {
-	buffer, has_buffer := _bindless_remove_buffer(g.bindless, buffer_h).?
+	buffer, has_buffer := _bindless_remove_buffer(g.bindless, buffer_h)
 	if has_buffer {
 		destroy_buffer(g, &buffer)
 	}
@@ -175,7 +175,7 @@ _bindless_store_texture :: proc(bindless: ^Bindless, device: vk.Device, texture:
 	return handle
 }
 
-_bindless_remove_texture :: proc(bindless: ^Bindless, texture_h: Texture_Handle) -> Maybe(Texture) {
+_bindless_remove_texture :: proc(bindless: ^Bindless, texture_h: Texture_Handle) -> (Texture, bool) {
 	return hm.remove(&bindless.textures, texture_h)
 }
 
@@ -215,6 +215,6 @@ _bindless_store_buffer :: proc(bindless: ^Bindless, device: vk.Device, buffer: B
 	return handle
 }
 
-_bindless_remove_buffer :: proc(bindless: ^Bindless, buffer_h: Buffer_Handle) -> Maybe(Buffer) {
+_bindless_remove_buffer :: proc(bindless: ^Bindless, buffer_h: Buffer_Handle) -> (Buffer, bool) {
 	return hm.remove(&bindless.buffers, buffer_h)
 }

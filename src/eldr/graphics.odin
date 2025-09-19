@@ -12,10 +12,15 @@ init_graphic :: proc(window: glfw.WindowHandle) {
 	gfx.init_graphic(ctx.g, window)
 }
 
-get_width :: proc() -> u32 {return gfx.get_width(ctx.g)}
-get_height :: proc() -> u32 {return gfx.get_height(ctx.g)}
+@(require_results)
+get_screen_width :: proc() -> u32 {return gfx.get_screen_width(ctx.g)}
+@(require_results)
+get_screen_height :: proc() -> u32 {return gfx.get_screen_height(ctx.g)}
+@(require_results)
+screen_resized :: proc() -> bool {return gfx.screen_resized(ctx.g)}
 
-begin_render :: proc() -> (Frame_Data, Begin_Render_Error) {return gfx.begin_render(ctx.g)}
+@(require_results)
+begin_render :: proc() -> Frame_Data {return gfx.begin_render(ctx.g)}
 end_render :: proc(frame_data: Frame_Data) {gfx.end_render(ctx.g, frame_data, {})}
 end_render_wait :: proc(frame_data: Frame_Data, sync_data: Sync_Data) {gfx.end_render(ctx.g, frame_data, sync_data)}
 begin_draw :: proc(frame_data: Frame_Data) {gfx.begin_draw(ctx.g, frame_data)}
@@ -25,10 +30,22 @@ cmd_set_full_viewport :: proc(cmd: Command_Buffer) {gfx.cmd_set_full_viewport(ct
 
 // CAMERA
 
-camera_init :: proc(camera: ^Camera) {gfx.camera_init(camera, ctx.g)}
-camera_set_yaw :: proc(camera: ^Camera, angle: f32) {gfx.camera_set_yaw(camera, angle)}
+camera_init :: proc(camera: ^Camera, width: f32, height: f32) {gfx.camera_init(camera, ctx.g, width, height)}
+
+@(require_results)
 camera_get_forward :: proc(camera: ^Camera) -> vec3 {return gfx.camera_get_forward(camera)}
-camera_apply :: proc(camera: ^Camera, width: f32, height: f32) {gfx.camera_apply(camera, ctx.g, width, height)}
+@(require_results)
+camera_get_right :: proc(camera: ^Camera) -> vec3 {return gfx.camera_get_right(camera)}
+@(require_results)
+camera_get_left :: proc(camera: ^Camera) -> vec3 {return gfx.camera_get_left(camera)}
+
+camera_set_yaw :: proc(camera: ^Camera, angle: f32) {gfx.camera_set_yaw(camera, angle)}
+camera_set_pitch :: proc(camera: ^Camera, angle: f32) {gfx.camera_set_pitch(camera, angle)}
+camera_set_roll :: proc(camera: ^Camera, angle: f32) {gfx.camera_set_roll(camera, angle)}
+camera_set_zoom :: proc(camera: ^Camera, zoom: vec3) {gfx.camera_set_zoom(camera, zoom)}
+camera_set_aspect :: proc(camera: ^Camera, width: f32, height: f32) {gfx.camera_set_aspect(camera, width, height)}
+
+camera_apply :: proc(camera: ^Camera) {gfx.camera_apply(camera, ctx.g)}
 
 // TRANSFORM
 
@@ -47,22 +64,26 @@ create_uniform_buffer :: proc(size: Gfx_Size) {}
 
 // PIPELINE
 
+@(require_results)
 create_graphics_pipeline :: proc(create_info: ^Create_Pipeline_Info) -> (Pipeline_Handle, bool) {
 	return gfx.create_graphics_pipeline(ctx.g, create_info)
 }
 
+@(require_results)
 get_graphics_pipeline :: proc(pipeline_h: Pipeline_Handle, loc := #caller_location) -> ^Pipeline {
 	pipeline, ok := gfx.get_graphics_pipeline(ctx.g, pipeline_h)
 	assert(ok, "Couldn't get pipeline", loc)
 	return pipeline
 }
 
+@(require_results)
 create_bindless_pipeline_set_info :: proc(allocator := context.allocator) -> Pipeline_Set_Info {
 	return gfx.create_bindless_pipeline_set_info(allocator)
 }
 
 // TEXTURE
 
+@(require_results)
 load_texture :: proc(path: string) -> Texture_Handle {
 	image, ok := load_image(path)
 	defer unload_image(image)
@@ -75,6 +96,7 @@ load_texture :: proc(path: string) -> Texture_Handle {
 	return gfx.bindless_store_texture(ctx.g, texture)
 }
 
+@(require_results)
 get_texture :: proc(texture_h: Texture_Handle, loc := #caller_location) -> ^Texture {
 	texture, ok := gfx.bindless_get_texture(ctx.g, texture_h)
 	if !ok {
@@ -90,6 +112,7 @@ unload_texture :: proc(texture_h: Texture_Handle) {
 
 // MODEL
 
+@(require_results)
 load_model :: proc(path: string) -> Model {
 	imp_meshes, ok := imp.import_obj(path)
 	defer delete(imp_meshes)
@@ -115,20 +138,18 @@ draw_model :: proc(model: Model, camera: Camera, transform: Transform, cmd: Comm
 
 // SURFACE
 
-surface_init :: proc(surface: ^Surface, width, height: u32, allocator := context.allocator) {
-	gfx.surface_init(surface, ctx.g, width, height, allocator)
+@(require_results)
+create_surface :: proc(width, height: u32, allocator := context.allocator) -> Surface_Handle {
+	return gfx.create_surface(ctx.g, width, height, allocator)
 }
-
-surface_destroy :: proc(surface: ^Surface) {gfx.surface_destroy(surface, ctx.g)}
-
+@(require_results)
+get_surface :: proc(surface_h: Surface_Handle) -> (^Surface, bool) {return gfx.get_surface(ctx.g, surface_h)}
+destroy_surface :: proc(surface_h: Surface_Handle) {gfx.destroy_surface(ctx.g, surface_h)}
 surface_add_color_attachment :: proc(surface: ^Surface) {gfx.surface_add_color_attachment(surface, ctx.g)}
-
 surface_add_depth_attachment :: proc(surface: ^Surface) {gfx.surface_add_depth_attachment(surface, ctx.g)}
-
+@(require_results)
 surface_begin :: proc(surface: ^Surface) -> Frame_Data {return gfx.surface_begin(surface, ctx.g)}
-
 surface_end :: proc(surface: ^Surface, fame_data: Frame_Data) {gfx.surface_end(surface, fame_data)}
-
 surface_draw :: proc(surface: ^Surface, frame_data: Frame_Data, pipeline_h: Pipeline_Handle) {
 	gfx.surface_draw(surface, ctx.g, frame_data, pipeline_h)
 }

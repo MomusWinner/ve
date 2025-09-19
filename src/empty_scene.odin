@@ -28,7 +28,7 @@ empty_scene_update :: proc(s: ^Scene, dt: f64) {
 empty_scene_draw :: proc(s: ^Scene) {
 	e := &eldr.ctx
 
-	frame_data, _ := eldr.begin_render()
+	frame_data := eldr.begin_render()
 	// Begin gfx. ------------------------------
 
 	eldr.cmd_set_full_viewport(frame_data.cmd)

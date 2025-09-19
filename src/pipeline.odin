@@ -4,7 +4,6 @@ import "core:log"
 import "core:mem/virtual"
 import "eldr"
 import gfx "eldr/graphics"
-import hm "eldr/handle_map"
 import vk "vendor:vulkan"
 
 default_shader_attribute :: proc() -> (eldr.VertexInputBindingDescription, [3]eldr.VertexInputAttributeDescription) {
