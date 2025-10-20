@@ -3,19 +3,6 @@ package graphics
 import "core:log"
 import vk "vendor:vulkan"
 
-Model :: struct {
-	meshes:        []Mesh,
-	materials:     [dynamic]Material,
-	mesh_material: [dynamic]int,
-}
-
-Mesh :: struct {
-	vbo:      Buffer,
-	ebo:      Maybe(Buffer),
-	vertices: []Vertex,
-	indices:  []u16,
-}
-
 create_mesh :: proc(g: ^Graphics, vertices: []Vertex, indices: []u16) -> Mesh {
 	assert(len(vertices) > 0)
 	vertices_size := cast(vk.DeviceSize)(size_of(vertices[0]) * len(vertices))
@@ -49,9 +36,9 @@ destroy_mesh :: proc(g: ^Graphics, mesh: ^Mesh) {
 draw_mesh :: proc(
 	g: ^Graphics,
 	mesh: ^Mesh,
-	material: Material,
+	material: ^Material,
 	camera: Camera,
-	transform: Transform,
+	transform: ^Transform,
 	cmd: vk.CommandBuffer,
 ) {
 	ebo, has_ebo := mesh.ebo.?
@@ -63,9 +50,11 @@ draw_mesh :: proc(
 	}
 
 	pipeline, ok := get_graphics_pipeline(g, material.pipeline_h)
-	if !ok {
-		log.error("Couldn't get pipeline")
-	}
+	assert(ok, "Couldn't get pipeline")
+
+
+	_transform_apply(transform, g)
+	_material_apply(material, g)
 
 	bind_pipeline(g, pipeline)
 
@@ -95,14 +84,18 @@ destroy_model :: proc(g: ^Graphics, model: ^Model) {
 	for &mesh in model.meshes {
 		destroy_mesh(g, &mesh)
 	}
+	for &mat in model.materials { 	// TODO: material
+		destroy_material(g, &mat)
+	}
+
 	delete(model.meshes)
 	delete(model.materials)
 	delete(model.mesh_material)
 }
 
-draw_model :: proc(g: ^Graphics, model: Model, camera: Camera, transform: Transform, cmd: vk.CommandBuffer) {
+draw_model :: proc(g: ^Graphics, model: Model, camera: Camera, transform: ^Transform, cmd: vk.CommandBuffer) {
 	for &mesh, i in model.meshes {
 		material_index := model.mesh_material[i]
-		draw_mesh(g, &mesh, model.materials[material_index], camera, transform, cmd)
+		draw_mesh(g, &mesh, &model.materials[material_index], camera, transform, cmd)
 	}
 }

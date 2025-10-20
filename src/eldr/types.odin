@@ -6,6 +6,7 @@ import gfx "graphics"
 vec2 :: common.vec2
 vec3 :: common.vec3
 vec4 :: common.vec4
+color :: common.color
 Vertex :: common.Vertex
 Image :: common.Image
 
@@ -30,15 +31,19 @@ Model :: gfx.Model
 Frame_Data :: gfx.Frame_Data
 Frame_Status :: gfx.Frame_Status
 
+Create_Font_Info :: gfx.Create_Font_Info
+Font :: gfx.Font
+Text :: gfx.Text
+CharacterRegion :: gfx.CharacterRegion
+
 Surface :: gfx.Surface
 Surface_Handle :: gfx.Surface_Handle
-
 
 Command_Buffer :: gfx.Command_Buffer
 Gfx_Size :: gfx.Device_Size
 Pipeline_Stage_Flags :: gfx.Pipeline_Stage_Flags
 Sync_Data :: gfx.Sync_Data
 Semaphore :: gfx.Semaphore
-VertexInputBindingDescription :: gfx.Vertex_Input_Binding_Description
-VertexInputAttributeDescription :: gfx.Vertex_Input_Attribute_Description
-VertexInputDescription :: gfx.Vertex_Input_Description
+Vertex_Input_Binding_Description :: gfx.Vertex_Input_Binding_Description
+Vertex_Input_Attribute_Description :: gfx.Vertex_Input_Attribute_Description
+Vertex_Input_Description :: gfx.Vertex_Input_Description

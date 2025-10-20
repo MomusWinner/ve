@@ -33,6 +33,10 @@ empty_scene_draw :: proc(s: ^Scene) {
 
 	eldr.cmd_set_full_viewport(frame_data.cmd)
 
+	eldr.begin_draw(frame_data)
+
+	eldr.end_draw(frame_data)
+
 	// End gfx. ------------------------------
 	eldr.end_render(frame_data)
 

@@ -10,12 +10,13 @@ create_texture :: proc(g: ^Graphics, image: Image, name: string = "empty", mip_l
 	levels: f32 = 0
 	if mip_levels <= 0 {
 		// levels = math.floor_f32(math.log2(cast(f32)max(image.width, image.height))) + 1
-		levels = 11
+		levels = 3
 	} else {
 		levels = mip_levels
 	}
+	levels = 1
 
-	desired_channels: u32 = 4
+	desired_channels: u32 = image.channels
 	image_size := cast(vk.DeviceSize)(image.width * image.height * desired_channels)
 
 	sc := _cmd_single_begin(g)
@@ -26,7 +27,21 @@ create_texture :: proc(g: ^Graphics, image: Image, name: string = "empty", mip_l
 	_cmd_buffer_barrier(sc.command_buffer, staging_buffer, {.HOST_WRITE}, {.TRANSFER_READ}, {.HOST}, {.TRANSFER})
 	defer destroy_buffer(g, &staging_buffer)
 
-	format: vk.Format = .R8G8B8A8_SRGB
+	format: vk.Format
+
+	switch image.pixel {
+	case .GRAY:
+		format = .R8_SRGB
+	case .GRAY_ALPHA:
+		format = .R8G8_SRGB
+	case .R8G8B8:
+		// format = .R8G8B8_SRGB
+		format = .R8G8B8_SRGB
+	case .R8G8B8A8:
+		format = .R8G8B8A8_SRGB
+	}
+
+	// format = .R8G8B8A8_SRGB
 
 	// Image
 	vk_image, allocation, allocation_info := _create_image(
@@ -53,15 +68,19 @@ create_texture :: proc(g: ^Graphics, image: Image, name: string = "empty", mip_l
 	)
 	_copy_buffer_to_image(sc.command_buffer, staging_buffer.buffer, vk_image, image.width, image.height)
 
-	_generate_mipmaps(
-		g,
-		sc.command_buffer,
-		vk_image,
-		.R8G8B8A8_SRGB,
-		cast(i32)image.width,
-		cast(i32)image.height,
-		cast(u32)levels,
-	)
+	if levels > 1 {
+		log.info(name, "blit")
+		_generate_mipmaps(
+			g,
+			sc.command_buffer,
+			vk_image,
+			format,
+			cast(i32)image.width,
+			cast(i32)image.height,
+			cast(u32)levels,
+		)
+
+	}
 
 	_cmd_single_end(sc)
 
@@ -190,7 +209,7 @@ _transition_image_layout_from_cmd :: proc(
 		barrier_dst_access_mask = {.MEMORY_READ}
 
 		source_stage = {.COLOR_ATTACHMENT_OUTPUT}
-		destination_stage = {.ALL_GRAPHICS}
+		destination_stage = {.FRAGMENT_SHADER}
 	} else if old_layout == .SHADER_READ_ONLY_OPTIMAL && new_layout == .COLOR_ATTACHMENT_OPTIMAL {
 		barrier_src_access_mask = {.MEMORY_READ}
 		barrier_dst_access_mask = {.COLOR_ATTACHMENT_WRITE}

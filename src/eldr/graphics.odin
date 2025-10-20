@@ -49,14 +49,16 @@ camera_apply :: proc(camera: ^Camera) {gfx.camera_apply(camera, ctx.g)}
 
 // TRANSFORM
 
-transform_init :: proc(transfrom: ^Transform) {gfx.transform_init(transfrom, ctx.g)}
+init_transform :: proc(transfrom: ^Transform) {gfx.init_transform(ctx.g, transfrom)}
 transform_set_position :: proc(transfrom: ^Transform, pos: vec3) {gfx.transform_set_position(transfrom, pos)}
-transform_apply :: proc(transfrom: ^Transform) {gfx.transform_apply(transfrom, ctx.g)}
 
 // MATERIALS
 
-material_init :: proc(material: ^Material, pipeline_h: Pipeline_Handle) {gfx.material_init(material, ctx.g, pipeline_h)}
-material_update :: proc(material: ^Material) {gfx.material_update(material, ctx.g)}
+material_init :: proc(material: ^Material, pipeline_h: Pipeline_Handle) {gfx.init_material(ctx.g, material, pipeline_h)}
+material_set_color :: proc(material: ^Material, color: color) {gfx.material_set_color(material, color)}
+material_set_texture :: proc(material: ^Material, texture_h: Texture_Handle) {
+	gfx.material_set_texture(material, texture_h)
+}
 
 // BUFFERS
 
@@ -132,9 +134,32 @@ load_model :: proc(path: string) -> Model {
 
 destroy_model :: proc(model: ^Model) {gfx.destroy_model(ctx.g, model)}
 
-draw_model :: proc(model: Model, camera: Camera, transform: Transform, cmd: Command_Buffer) {
+draw_model :: proc(model: Model, camera: Camera, transform: ^Transform, cmd: Command_Buffer) {
 	gfx.draw_model(ctx.g, model, camera, transform, cmd)
 }
+
+// TEXT
+
+@(require_results)
+load_font :: proc(create_info: Create_Font_Info, loc := #caller_location) -> Font {
+	return gfx.load_font(ctx.g, create_info, loc)
+}
+unload_font :: proc(font: ^Font) {gfx.unload_font(ctx.g, font)}
+@(require_results)
+create_text :: proc(
+	font: ^Font,
+	text: string,
+	position: vec3,
+	size: f32,
+	color: color = color{1, 1, 1, 1},
+	loc := #caller_location,
+) -> Text {
+	return gfx.create_text(ctx.g, font, text, position, color, size, loc)
+}
+destroy_text :: proc(text: ^Text) {gfx.destroy_text(ctx.g, text)}
+draw_text :: proc(text: ^Text, frame_data: Frame_Data, camera: Camera) {gfx.draw_text(ctx.g, text, frame_data, camera)}
+text_set_color :: proc(text: ^Text, color: color) {gfx.text_set_color(text, color)}
+text_set_string :: proc(text: ^Text, str: string) {gfx.text_set_string(text, ctx.g, str)}
 
 // SURFACE
 

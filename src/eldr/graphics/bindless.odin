@@ -11,6 +11,8 @@ import "vendor:glfw"
 import vk "vendor:vulkan"
 import "vma"
 
+DESCRIPTOR_COUNT :: 1000
+
 UNIFORM_BINDING :: 0
 STORAGE_BINDING :: 1
 TEXTURE_BINDING :: 2
@@ -64,17 +66,17 @@ create_bindless_pipeline_set_info :: proc(allocator := context.allocator) -> Pip
 	binding_infos := make([]Pipeline_Set_Binding_Info, 3, allocator)
 	binding_infos[0].binding = UNIFORM_BINDING
 	binding_infos[0].descriptor_type = .UNIFORM_BUFFER
-	binding_infos[0].descriptor_count = 10
+	binding_infos[0].descriptor_count = DESCRIPTOR_COUNT
 	binding_infos[0].stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS
 
 	binding_infos[1].binding = STORAGE_BINDING
 	binding_infos[1].descriptor_type = .STORAGE_BUFFER
-	binding_infos[1].descriptor_count = 10
+	binding_infos[1].descriptor_count = DESCRIPTOR_COUNT
 	binding_infos[1].stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS
 
 	binding_infos[2].binding = TEXTURE_BINDING
 	binding_infos[2].descriptor_type = .COMBINED_IMAGE_SAMPLER
-	binding_infos[2].descriptor_count = 10
+	binding_infos[2].descriptor_count = DESCRIPTOR_COUNT
 	binding_infos[2].stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS
 
 	flags := make([]vk.DescriptorBindingFlags, 3)
@@ -101,7 +103,7 @@ _bindless_init :: proc(bindless: ^Bindless, device: vk.Device, descriptor_pool: 
 	for i in 0 ..< 3 {
 		descriptor_bindings[i].binding = cast(u32)i
 		descriptor_bindings[i].descriptorType = descriptor_types[i]
-		descriptor_bindings[i].descriptorCount = 10
+		descriptor_bindings[i].descriptorCount = DESCRIPTOR_COUNT
 		descriptor_bindings[i].stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS
 		descriptor_binding_flags[i] = {.PARTIALLY_BOUND, .UPDATE_AFTER_BIND}
 	}
@@ -179,7 +181,7 @@ _bindless_remove_texture :: proc(bindless: ^Bindless, texture_h: Texture_Handle)
 	return hm.remove(&bindless.textures, texture_h)
 }
 
-_bindless_store_buffer :: proc(bindless: ^Bindless, device: vk.Device, buffer: Buffer) -> Buffer_Handle { 	// TODO: saved uniform buffers
+_bindless_store_buffer :: proc(bindless: ^Bindless, device: vk.Device, buffer: Buffer) -> Buffer_Handle {
 	handle := hm.insert(&bindless.buffers, buffer)
 
 	writes: [2]vk.WriteDescriptorSet
@@ -198,19 +200,18 @@ _bindless_store_buffer :: proc(bindless: ^Bindless, device: vk.Device, buffer: B
 		write.pBufferInfo = &buffer_info
 	}
 
-	i := 0
+	i: u32 = 0
 	if vk.BufferUsageFlag.UNIFORM_BUFFER in buffer.usage {
 		writes[i].dstBinding = UNIFORM_BINDING
 		writes[i].descriptorType = .UNIFORM_BUFFER
 		i += 1
 	}
 
-	if vk.BufferUsageFlag.STORAGE_BUFFER in buffer.usage {
-		writes[i].dstBinding = STORAGE_BINDING
+	if vk.BufferUsageFlag.STORAGE_BUFFER in buffer.usage {writes[i].dstBinding = STORAGE_BINDING
 		writes[i].descriptorType = .STORAGE_BUFFER
 	}
 
-	vk.UpdateDescriptorSets(device, 1, raw_data(&writes), 0, nil)
+	vk.UpdateDescriptorSets(device, i, raw_data(&writes), 0, nil)
 
 	return handle
 }

@@ -49,14 +49,38 @@ init_graphic :: proc(g: ^Graphics, window: glfw.WindowHandle) {
 	_swapchain_setup(g.swapchain, sc.command_buffer)
 	_cmd_single_end(sc)
 
+	g.deffered_destructor = new(Deferred_Destructor)
 
 	g.bindless = new(Bindless)
 	_bindless_init(g.bindless, g.device, g.descriptor_pool)
+
+	g.temp_material_pool = new(Temp_Material_Pool)
+	_init_temp_material_pool(g, g.temp_material_pool, 100)
+	g.temp_transform_pool = new(Temp_Transform_Pool)
+	_init_temp_transform_pool(g, g.temp_transform_pool, 100)
+
+	g.buildin = new(Buildin_Resource)
+	init_buildin_resources(g, g.buildin)
 }
 
 destroy_graphic :: proc(g: ^Graphics) {
+	destroy_buildin(g, g.buildin)
+	free(g.buildin)
+
+	_destroy_temp_material_pool(g, g.temp_material_pool)
+	free(g.temp_material_pool)
+	_destroy_temp_transform_pool(g, g.temp_transform_pool)
+	free(g.temp_transform_pool)
+
+	// destroy_shape_collection(g, g.buildin.sq)
+	// free(g.shapes)
+
 	_bindless_destroy(g.bindless, g.device, g.allocator)
 	free(g.bindless)
+
+	destroy_deffered_destructor(g)
+	free(g.deffered_destructor)
+
 	_destroy_sync_obj(g)
 	_destroy_command_pool(g)
 	_destroy_descriptor_pool(g)
@@ -224,8 +248,8 @@ _physical_device_extensions :: proc(
 _pick_physical_device :: proc(g: ^Graphics) {
 	score_physical_device :: proc(g: ^Graphics, device: vk.PhysicalDevice) -> (score: int) {
 		features: Physical_Device_Features
-		get_physical_device_features(device, &features)
-		success, msg := validate_physical_device_features(features)
+		_get_physical_device_features(device, &features)
+		success, msg := _validate_physical_device_features(features)
 		if !success {
 			log.info(" !", msg)
 			return 0
@@ -445,7 +469,8 @@ byte_arr_str :: proc(arr: ^[$N]byte) -> string {
 	return strings.truncate_to_byte(string(arr[:]), 0)
 }
 
-get_physical_device_features :: proc(device: vk.PhysicalDevice, features: ^Physical_Device_Features) {
+@(private = "file")
+_get_physical_device_features :: proc(device: vk.PhysicalDevice, features: ^Physical_Device_Features) {
 	features.dynamic_rendering.sType = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES
 	features.dynamic_rendering.dynamicRendering = true
 
@@ -461,7 +486,8 @@ get_physical_device_features :: proc(device: vk.PhysicalDevice, features: ^Physi
 	vk.GetPhysicalDeviceFeatures2(device, &features.features)
 }
 
-validate_physical_device_features :: proc(features: Physical_Device_Features) -> (bool, string) {
+@(private = "file")
+_validate_physical_device_features :: proc(features: Physical_Device_Features) -> (bool, string) {
 	// DYNAMIC RENDERING 
 	if !features.dynamic_rendering.dynamicRendering {
 		return false, "device does not support dynamic rendering"
@@ -537,4 +563,14 @@ get_required_physical_device_features :: proc(features: ^Physical_Device_Feature
 	features.features.pNext = &features.synchronization
 	features.features.features.geometryShader = true
 	features.features.features.samplerAnisotropy = true
+}
+
+init_buildin_resources :: proc(g: ^Graphics, buildin: ^Buildin_Resource) {
+	buildin.square = create_square(g)
+	buildin.text_pipeline_h = _text_default_pipeline(g)
+	buildin.primitive_pipeline_h = create_primitive_pipeline(g)
+}
+
+destroy_buildin :: proc(g: ^Graphics, buildin: ^Buildin_Resource) {
+	destroy_model(g, &buildin.square)
 }

@@ -6,31 +6,41 @@ import "eldr"
 import gfx "eldr/graphics"
 import vk "vendor:vulkan"
 
-default_shader_attribute :: proc() -> (eldr.VertexInputBindingDescription, [3]eldr.VertexInputAttributeDescription) {
-	bind_description := eldr.VertexInputBindingDescription {
+default_shader_attribute :: proc(
+) -> (
+	eldr.Vertex_Input_Binding_Description,
+	[4]eldr.Vertex_Input_Attribute_Description,
+) {
+	bind_description := eldr.Vertex_Input_Binding_Description {
 		binding   = 0,
 		stride    = size_of(eldr.Vertex),
 		inputRate = .VERTEX,
 	}
 
-	attribute_descriptions := [3]eldr.VertexInputAttributeDescription {
-		eldr.VertexInputAttributeDescription {
+	attribute_descriptions := [4]eldr.Vertex_Input_Attribute_Description {
+		eldr.Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 0,
 			format = .R32G32B32_SFLOAT,
 			offset = cast(u32)offset_of(eldr.Vertex, position),
 		},
-		eldr.VertexInputAttributeDescription {
+		eldr.Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 1,
 			format = .R32G32_SFLOAT,
 			offset = cast(u32)offset_of(eldr.Vertex, tex_coord),
 		},
-		eldr.VertexInputAttributeDescription {
+		eldr.Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 2,
 			format = .R32G32B32_SFLOAT,
 			offset = cast(u32)offset_of(eldr.Vertex, normal),
+		},
+		eldr.Vertex_Input_Attribute_Description {
+			binding = 0,
+			location = 3,
+			format = .R32G32B32A32_SFLOAT,
+			offset = cast(u32)offset_of(eldr.Vertex, color),
 		},
 	}
 

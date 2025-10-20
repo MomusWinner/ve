@@ -610,7 +610,7 @@ _create_vertex_input_info :: proc(
 ) -> ^vk.PipelineVertexInputStateCreateInfo {
 	bind_description := new(Vertex_Input_Binding_Description, allocator)
 	bind_description.binding = 0
-	bind_description.stride = size_of(Vertex)
+	bind_description.stride = create_info.vertex_input_description.binding_description.stride
 	bind_description.inputRate = create_info.vertex_input_description.input_rate
 
 	vertex_input_info := new(vk.PipelineVertexInputStateCreateInfo, allocator)
@@ -695,6 +695,17 @@ _create_color_blend_info :: proc(
 	allocator := context.temp_allocator,
 ) -> ^vk.PipelineColorBlendStateCreateInfo {
 	color_blend_attachment := new(vk.PipelineColorBlendAttachmentState, context.temp_allocator)
+
+	// enable blending
+	// TODO:
+	color_blend_attachment.blendEnable = true
+	color_blend_attachment.srcColorBlendFactor = .SRC_ALPHA
+	color_blend_attachment.dstColorBlendFactor = .ONE_MINUS_SRC_ALPHA
+	color_blend_attachment.colorBlendOp = .ADD
+	color_blend_attachment.srcAlphaBlendFactor = .ONE
+	color_blend_attachment.dstAlphaBlendFactor = .ZERO
+	color_blend_attachment.alphaBlendOp = .ADD
+
 	color_blend_attachment.colorWriteMask = {.R, .G, .B, .A}
 
 	color_blending := new(vk.PipelineColorBlendStateCreateInfo, context.temp_allocator)

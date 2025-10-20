@@ -28,306 +28,17 @@ DEVICE_EXTENSIONS := []cstring {
 	// KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 }
 
-UNIFORM_DESCRIPTOR_MAX :: 300
-UNIFORM_DESCRIPTOR_DYNAMIC_MAX :: 30
-IMAGE_SAMPLER_DESCRIPTOR_MAX :: 300
-STORAGE_DESCRIPTOR_MAX :: 300
-DESCRIPTOR_SET_MAX :: 300
+UNIFORM_DESCRIPTOR_MAX :: 3000
+UNIFORM_DESCRIPTOR_DYNAMIC_MAX :: 3000 // 30
+IMAGE_SAMPLER_DESCRIPTOR_MAX :: 3000
+STORAGE_DESCRIPTOR_MAX :: 3000
+DESCRIPTOR_SET_MAX :: 3000
 
-vec2 :: common.vec2
-ivec2 :: common.ivec2
-vec3 :: common.vec3
-ivec3 :: common.ivec3
-vec4 :: common.vec4
-ivec4 :: common.ivec4
-mat4 :: common.mat4
-
-Vertex :: common.Vertex
-Image :: common.Image
-
-Texture :: struct {
-	name:            string,
-	image:           vk.Image,
-	view:            vk.ImageView,
-	sampler:         vk.Sampler,
-	format:          vk.Format,
-	allocation:      vma.Allocation,
-	allocation_info: vma.AllocationInfo,
-}
-
-Buffer :: struct {
-	buffer:          vk.Buffer,
-	usage:           vk.BufferUsageFlags,
-	allocation:      vma.Allocation,
-	allocation_info: vma.AllocationInfo,
-	mapped:          rawptr,
-}
-
-Semaphore :: vk.Semaphore
-Vertex_Input_Binding_Description :: vk.VertexInputBindingDescription
-Vertex_Input_Attribute_Description :: vk.VertexInputAttributeDescription
-Push_Constant_Range :: vk.PushConstantRange
-Device_Size :: vk.DeviceSize
-Command_Buffer :: vk.CommandBuffer
-Pipeline_Stage_Flags :: vk.PipelineStageFlags
-
-Vertex_Input_Description :: struct {
-	binding_description:    Vertex_Input_Binding_Description,
-	attribute_descriptions: []Vertex_Input_Attribute_Description,
-}
-
-Pipeline_Set_Binding_Info :: struct {
-	binding:          u32,
-	descriptor_type:  vk.DescriptorType,
-	descriptor_count: u32,
-	stage_flags:      vk.ShaderStageFlags,
-}
-
-Pipeline_Resource :: union {
-	Texture,
-	Buffer,
-}
-
-Pipeline_Stage_Info :: struct {
-	stage:       vk.ShaderStageFlags,
-	shader_path: string,
-}
-
-Pipeline_Set_Info :: struct {
-	set:           u32,
-	binding_infos: []Pipeline_Set_Binding_Info,
-	flags:         []vk.DescriptorBindingFlags,
-}
-
-Create_Pipeline_Info :: struct {
-	set_infos:                []Pipeline_Set_Info,
-	push_constants:           []Push_Constant_Range,
-	stage_infos:              []Pipeline_Stage_Info,
-	render_pass:              Maybe(vk.RenderPass),
-	vertex_input_description: struct {
-		input_rate:             vk.VertexInputRate,
-		binding_description:    Vertex_Input_Binding_Description,
-		attribute_descriptions: []Vertex_Input_Attribute_Description,
-	},
-	input_assembly:           struct {
-		topology: vk.PrimitiveTopology,
-	},
-	rasterizer:               struct {
-		polygonMode: vk.PolygonMode,
-		lineWidth:   f32,
-		cullMode:    vk.CullModeFlags,
-		frontFace:   vk.FrontFace,
-	},
-	multisampling:            struct {
-		rasterizationSamples: vk.SampleCountFlags,
-		minSampleShading:     f32,
-	},
-	depth_stencil:            struct {
-		depthTestEnable:       b32,
-		depthWriteEnable:      b32,
-		depthCompareOp:        vk.CompareOp,
-		depthBoundsTestEnable: b32,
-		stencilTestEnable:     b32,
-		front:                 vk.StencilOpState,
-		back:                  vk.StencilOpState,
-		minDepthBounds:        f32,
-		maxDepthBounds:        f32,
-	},
-}
-
-Create_Compute_Pipeline_Info :: struct {
-	set_infos:   []Pipeline_Set_Info,
-	shader_path: string,
-}
-
-Pipeline :: struct {
-	pipeline:               vk.Pipeline,
-	layout:                 vk.PipelineLayout,
-	descriptor_set_layouts: []vk.DescriptorSetLayout,
-}
-
-Graphics_Pipeline :: struct {
-	using base:  Pipeline,
-	create_info: ^Create_Pipeline_Info,
-}
-
-Compute_Pipeline :: struct {
-	using base:  Pipeline,
-	create_info: ^Create_Compute_Pipeline_Info,
-}
-
-Surface_Handle :: distinct hm.Handle
-
-Surface_Manager :: struct {
-	surfaces: hm.Handle_Map(Surface, Surface_Handle),
-}
-
-Push_Constant :: struct {
-	camera:   u32,
-	model:    u32,
-	material: u32,
-	pad0:     u32,
-}
-
-Pipeline_Handle :: distinct hm.Handle
-
-Pipeline_Manager :: struct {
-	pipelines:          hm.Handle_Map(Graphics_Pipeline, Pipeline_Handle),
-	compute_pipelines:  hm.Handle_Map(Compute_Pipeline, Pipeline_Handle),
-	compiler:           shaderc.compilerT,
-	compiler_options:   shaderc.compileOptionsT,
-	enable_compilation: bool,
-}
-
-Swap_Chain :: struct {
-	swapchain:                  vk.SwapchainKHR,
-	format:                     vk.SurfaceFormatKHR,
-	extent:                     vk.Extent2D,
-	samples:                    vk.SampleCountFlags,
-	color_image:                Texture,
-	depth_image:                Texture,
-	image_index:                u32,
-	images:                     []vk.Image,
-	image_views:                []vk.ImageView,
-	frame_buffers:              []vk.Framebuffer,
-	render_finished_semaphores: []vk.Semaphore,
-	_allocator:                 vma.Allocator,
-	_device:                    vk.Device,
-	_physical_device:           vk.PhysicalDevice,
-	_surface:                   vk.SurfaceKHR,
-}
-
-Physical_Device_Features :: struct {
-	dynamic_rendering:   vk.PhysicalDeviceDynamicRenderingFeatures,
-	// ^
-	// | pNext
-	descriptor_indexing: vk.PhysicalDeviceDescriptorIndexingFeatures,
-	// ^
-	// | pNext
-	synchronization:     vk.PhysicalDeviceSynchronization2Features,
-	// ^
-	// | pNext
-	features:            vk.PhysicalDeviceFeatures2,
-}
-
-Graphics :: struct {
-	window:                    glfw.WindowHandle,
-	instance_info:             vk.InstanceCreateInfo,
-	instance:                  vk.Instance,
-	dbg_messenger:             vk.DebugUtilsMessengerEXT, // TODO: Maybe()
-	allocator:                 vma.Allocator,
-	// 
-	msaa_samples:              vk.SampleCountFlags,
-	physical_device:           vk.PhysicalDevice,
-	physical_device_property:  vk.PhysicalDeviceProperties,
-	device:                    vk.Device,
-	surface:                   vk.SurfaceKHR,
-	graphics_queue:            vk.Queue,
-	present_queue:             vk.Queue,
-	swapchain:                 ^Swap_Chain,
-	pipeline_manager:          ^Pipeline_Manager,
-	surface_manager:           ^Surface_Manager,
-	descriptor_pool:           vk.DescriptorPool,
-	bindless:                  ^Bindless,
-	command_pool:              vk.CommandPool,
-	cmd:                       vk.CommandBuffer,
-	image_available_semaphore: vk.Semaphore,
-	fence:                     vk.Fence,
-	swapchain_resized:         bool,
-	render_started:            bool,
-}
-
-Camera_UBO :: struct {
-	view:       mat4,
-	projection: mat4,
-}
-
-Camera_Extension :: struct {
-	data:                       Camera_Extension_Data,
-	get_view_matrix_multiplier: proc(data: Camera_Extension_Data) -> mat4,
-	test:                       f32,
-}
-
-Camera :: struct {
-	view:       mat4,
-	projection: mat4,
-	position:   vec3,
-	aspect:     f32,
-	zoom:       vec3,
-	target:     vec3,
-	up:         vec3,
-	fov:        f32,
-	near:       f32,
-	far:        f32,
-	buffer_h:   Buffer_Handle,
-	dirty:      bool,
-	extension:  Maybe(Camera_Extension),
-}
-
-Camera_Extension_Data :: union {
-	Resoulution_Independed_Ext,
-}
-
-Empty_Camera_Ext :: struct {
-}
-
-Material :: struct {
-	color:      vec4,
-	pipeline_h: Pipeline_Handle,
-	texture_h:  Texture_Handle,
-	buffer_h:   Buffer_Handle,
-}
-
-Model_UBO :: struct {
-	model:   glsl.mat4,
-	tangens: glsl.mat4,
-}
-
-Material_UBO :: struct {
-	color:   vec4,
-	texture: u32,
-	pad0:    u32,
-	pad1:    u32,
-	pad2:    u32,
-}
-
-Surface :: struct {
-	model:            Model,
-	color_attachment: Maybe(Surface_Color_Attachment),
-	depth_attachment: Maybe(Surface_Attachment),
-	extent:           vk.Extent2D,
-}
-
-Surface_Attachment :: struct {
-	resource: Texture,
-	handle:   Texture_Handle,
-	info:     vk.RenderingAttachmentInfo,
-}
-
-Surface_Color_Attachment :: struct {
-	using base:       Surface_Attachment,
-	resolve_resource: Texture,
-	resolve_handle:   Texture_Handle,
-}
-
-Frame_Status :: enum {
-	Success,
-	IncorrectSwapchainSize,
-}
-
-Frame_Data :: struct {
-	cmd:    vk.CommandBuffer,
-	status: Frame_Status,
-}
-
-Render_Frame :: struct {
-	state:       bool,
-	image_index: u32,
-}
-
-Sync_Data :: struct {
-	wait_semaphore_infos: []vk.SemaphoreSubmitInfo,
-}
+// UNIFORM_DESCRIPTOR_MAX :: 3000000
+// UNIFORM_DESCRIPTOR_DYNAMIC_MAX :: 3000000
+// IMAGE_SAMPLER_DESCRIPTOR_MAX :: 3000000
+// STORAGE_DESCRIPTOR_MAX :: 3000000
+// DESCRIPTOR_SET_MAX :: 3000000
 
 get_screen_size :: proc(g: ^Graphics) -> (width: u32, height: u32) {
 	width = g.swapchain.extent.width
@@ -403,6 +114,7 @@ end_render :: proc(g: ^Graphics, frame_data: Frame_Data, sync_data: Sync_Data) {
 	if !g.render_started {
 		log.error("Call begin_render() before end_render()")
 	}
+	defer g.render_started = false
 
 	frame_data := frame_data
 
@@ -469,7 +181,9 @@ end_render :: proc(g: ^Graphics, frame_data: Frame_Data, sync_data: Sync_Data) {
 		on_screen_resized(g)
 	}
 
-	defer g.render_started = false
+	_temp_pool_clear(g.temp_material_pool)
+	_temp_pool_clear(g.temp_transform_pool)
+	deffered_destructor_clean(g)
 }
 
 begin_draw :: proc(g: ^Graphics, frame: Frame_Data) {
@@ -544,7 +258,7 @@ cmd_set_full_viewport :: proc(g: ^Graphics, cmd: Command_Buffer) {
 	viewport := vk.Viewport {
 		width    = cast(f32)get_screen_width(g),
 		height   = cast(f32)get_screen_height(g),
-		maxDepth = 1.0,
+		maxDepth = 0.1,
 	}
 	vk.CmdSetViewport(cmd, 0, 1, &viewport)
 

@@ -86,7 +86,8 @@ main :: proc() {
 	g := eldr.ctx.g // TODO:
 	defer eldr.destroy_eldr()
 
-	scene := create_room_scene()
+	// scene := create_room_scene()
+	scene := create_text_scene()
 	// scene := create_empty_scene()
 
 	scene.init(&scene)
@@ -106,12 +107,14 @@ main :: proc() {
 			reload = false
 		}
 
-		// dt = glfw.GetTime() - last_time
-		// last_time = glfw.GetTime()
+		dt = glfw.GetTime() - last_time
+		last_time = glfw.GetTime()
 		// log.info("FPS: ", 1 / dt)
 
 		scene.update(&scene, dt)
 		scene.draw(&scene)
+
+		time.sleep(time.Second * 1 / 60) // FPS limit
 	}
 	vk.DeviceWaitIdle(g.device)
 

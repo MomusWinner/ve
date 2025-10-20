@@ -71,8 +71,6 @@ camera_apply :: proc(camera: ^Camera, g: ^Graphics) {
 	if !camera.dirty {
 		return
 	}
-	// log.info("apply camera")
-	// log.info("----------------------------------")
 
 	extension, has_extension := camera.extension.?
 

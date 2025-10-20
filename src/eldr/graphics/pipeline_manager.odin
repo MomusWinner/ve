@@ -22,6 +22,11 @@ get_compute_pipeline :: proc(g: ^Graphics, handle: Pipeline_Handle) -> (^Compute
 	return _pipeline_manager_get_compute_pipeline(g.pipeline_manager, handle)
 }
 
+// @(private)
+// _init_global_pipelines :: proc(g: ^Graphics) {
+// 	g_default_pipeline_h = create_default_pipeline(g)
+// }
+//
 @(private)
 _pipeline_manager_init :: proc(pm: ^Pipeline_Manager, enable_compilation: bool) {
 	pm.enable_compilation = enable_compilation
@@ -145,3 +150,59 @@ _shader_result_releaser :: proc "system" (userData: rawptr, includeResult: ^shad
 	delete(includeResult.content)
 	free(includeResult)
 }
+
+default_shader_attribute :: proc() -> (Vertex_Input_Binding_Description, [4]Vertex_Input_Attribute_Description) {
+	bind_description := Vertex_Input_Binding_Description {
+		binding   = 0,
+		stride    = size_of(Vertex),
+		inputRate = .VERTEX,
+	}
+
+	attribute_descriptions := [4]Vertex_Input_Attribute_Description {
+		Vertex_Input_Attribute_Description {
+			binding = 0,
+			location = 0,
+			format = .R32G32B32_SFLOAT,
+			offset = cast(u32)offset_of(Vertex, position),
+		},
+		Vertex_Input_Attribute_Description {
+			binding = 0,
+			location = 1,
+			format = .R32G32_SFLOAT,
+			offset = cast(u32)offset_of(Vertex, tex_coord),
+		},
+		Vertex_Input_Attribute_Description {
+			binding = 0,
+			location = 2,
+			format = .R32G32B32_SFLOAT,
+			offset = cast(u32)offset_of(Vertex, normal),
+		},
+		Vertex_Input_Attribute_Description {
+			binding = 0,
+			location = 3,
+			format = .R32G32B32A32_SFLOAT,
+			offset = cast(u32)offset_of(Vertex, color),
+		},
+	}
+
+	return bind_description, attribute_descriptions
+}
+
+// set_infos := []eldr.Pipeline_Set_Info {
+// 	{
+// 		set           = 0,
+// 		binding_infos = {
+// 			{binding = 0, descriptor_type = .COMBINED_IMAGE_SAMPLER, stage_flags = {.FRAGMENT}},
+//
+// 			// set:           u32,
+// 			// binding_infos: []Pipeline_Set_Binding_Info,
+// 			// flags:         []vk.DescriptorBindingFlags,
+//
+// 			// binding:          u32,
+// 			// descriptor_type:  vk.DescriptorType,
+// 			// descriptor_count: u32,
+// 			// stage_flags:      vk.ShaderStageFlags,
+// 		},
+// 		flags         = {{.UPDATE_AFTER_BIND, .PARTIALLY_BOUND}},
+// 	},
+// }

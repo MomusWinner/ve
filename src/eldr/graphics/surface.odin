@@ -141,7 +141,7 @@ surface_draw :: proc(surface: ^Surface, g: ^Graphics, frame: Frame_Data, pipelin
 
 	surface.model.materials[0].pipeline_h = pipeline_h
 	surface.model.materials[0].texture_h = color_attachment.resolve_handle
-	material_update(&surface.model.materials[0], g)
+	_material_apply(&surface.model.materials[0], g)
 	draw_model(g, surface.model, camera, {}, frame.cmd)
 }
 
@@ -203,16 +203,16 @@ _surface_init :: proc(surface: ^Surface, g: ^Graphics, width, height: u32, alloc
 	}
 
 	material: Material
-	material_init(&material, g, {})
+	init_material(g, &material, {})
 
 	vertices := make([]Vertex, 6, allocator) // TODO: move to manager
-	vertices[0] = {{1.0, 1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0, 1.0}}
-	vertices[1] = {{1.0, -1.0, 0.0}, {1.0, 0.0}, {0.0, 1.0, 0.0}}
-	vertices[2] = {{-1.0, -1.0, 0.0}, {0.0, 0.0}, {1.0, 0.0, 0.0}}
+	vertices[0] = {{1.0, 1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0}}
+	vertices[1] = {{1.0, -1.0, 0.0}, {1.0, 0.0}, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0, 1.0}}
+	vertices[2] = {{-1.0, -1.0, 0.0}, {0.0, 0.0}, {1.0, 0.0, 0.0}, {1.0, 1.0, 1.0, 1.0}}
 
-	vertices[3] = {{1.0, 1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0, 1.0}}
-	vertices[4] = {{-1.0, 1.0, 0.0}, {0.0, 1.0}, {1.0, 1.0, 1.0}}
-	vertices[5] = {{-1.0, -1.0, 0}, {0.0, 0.0}, {0.0, 1.0, 0.0}}
+	vertices[3] = {{1.0, 1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0}}
+	vertices[4] = {{-1.0, 1.0, 0.0}, {0.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0, 1.0}}
+	vertices[5] = {{-1.0, -1.0, 0}, {0.0, 0.0}, {0.0, 1.0, 0.0}, {1.0, 1.0, 1.0, 1.0}}
 
 	mesh := create_mesh(g, vertices, {})
 
@@ -281,11 +281,37 @@ _create_surface_color_resource :: proc(g: ^Graphics, format: vk.Format, samples:
 		vma.AllocationCreateFlags{},
 	)
 
+
 	view := _create_image_view(g.device, image, format, {.COLOR}, 1)
+
+
+	// Sampler
+	sampler_info := vk.SamplerCreateInfo {
+		sType                   = .SAMPLER_CREATE_INFO,
+		magFilter               = .LINEAR,
+		minFilter               = .LINEAR,
+		addressModeU            = .REPEAT,
+		addressModeV            = .REPEAT,
+		addressModeW            = .REPEAT,
+		anisotropyEnable        = true,
+		maxAnisotropy           = g.physical_device_property.limits.maxSamplerAnisotropy,
+		borderColor             = .INT_OPAQUE_BLACK,
+		unnormalizedCoordinates = false,
+		compareEnable           = false,
+		compareOp               = .ALWAYS,
+		mipmapMode              = .LINEAR,
+		mipLodBias              = 0.0,
+		minLod                  = 0.0,
+		maxLod                  = cast(f32)1,
+	}
+
+	sampler: vk.Sampler
+	must(vk.CreateSampler(g.device, &sampler_info, nil, &sampler))
 
 	return Texture {
 		name = "surface color resource",
 		image = image,
+		sampler = sampler,
 		view = view,
 		format = format,
 		allocation = allocation,
@@ -311,9 +337,34 @@ _create_surface_color_resolve_resource :: proc(g: ^Graphics, format: vk.Format) 
 
 	view := _create_image_view(g.device, image, format, {.COLOR}, 1)
 
+	// Sampler
+	sampler_info := vk.SamplerCreateInfo { 	// TODO: !! !!
+		sType                   = .SAMPLER_CREATE_INFO,
+		magFilter               = .LINEAR,
+		minFilter               = .LINEAR,
+		addressModeU            = .REPEAT,
+		addressModeV            = .REPEAT,
+		addressModeW            = .REPEAT,
+		anisotropyEnable        = true,
+		maxAnisotropy           = g.physical_device_property.limits.maxSamplerAnisotropy,
+		borderColor             = .INT_OPAQUE_BLACK,
+		unnormalizedCoordinates = false,
+		compareEnable           = false,
+		compareOp               = .ALWAYS,
+		mipmapMode              = .LINEAR,
+		mipLodBias              = 0.0,
+		minLod                  = 0.0,
+		maxLod                  = cast(f32)1,
+	}
+
+	sampler: vk.Sampler
+	must(vk.CreateSampler(g.device, &sampler_info, nil, &sampler))
+
+
 	return Texture {
 		name = "surface color resource",
 		image = image,
+		sampler = sampler,
 		view = view,
 		format = format,
 		allocation = allocation,
