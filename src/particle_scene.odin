@@ -41,7 +41,7 @@ create_particle_scene :: proc(e: ^eldr.Eldr) -> Scene {
 
 particle_scene_init :: proc(s: ^Scene) {
 	renderer := new(ParticleSceneData)
-	g := eldr.ctx.g
+	g := eldr.ctx.gfx
 
 	particles := _generate_particles(cast(f32)g.swapchain.extent.width, cast(f32)g.swapchain.extent.height)
 	renderer.uniform_buffer = gfx.create_uniform_buffer(g, cast(vk.DeviceSize)size_of(f32))
@@ -98,42 +98,42 @@ particle_scene_update :: proc(s: ^Scene, dt: f64) {
 	e := &eldr.ctx
 	data := cast(^ParticleSceneData)s.data
 	_particle_update_uniform_buffer(data.uniform_buffer, cast(f32)dt)
-	particle_compute(e.g, data)
+	particle_compute(e.gfx, data)
 }
 
 particle_scene_draw :: proc(s: ^Scene) {
 	e := &eldr.ctx
 	data := cast(^ParticleSceneData)s.data
 
-	pipeline, ok := gfx.get_graphics_pipeline(e.g, data.draw_pipeline_h)
+	pipeline, ok := gfx.get_graphics_pipeline(e.gfx, data.draw_pipeline_h)
 
-	frame_data := gfx.begin_render(e.g)
+	frame_data := gfx.begin_render(e.gfx)
 	// Begin gfx. ------------------------------
 
 	viewport := vk.Viewport {
-		width    = f32(e.g.swapchain.extent.width),
-		height   = f32(e.g.swapchain.extent.height),
+		width    = f32(e.gfx.swapchain.extent.width),
+		height   = f32(e.gfx.swapchain.extent.height),
 		maxDepth = 1.0,
 	}
-	vk.CmdSetViewport(e.g.cmd, 0, 1, &viewport)
+	vk.CmdSetViewport(e.gfx.cmd, 0, 1, &viewport)
 
 	scissor := vk.Rect2D {
-		extent = e.g.swapchain.extent,
+		extent = e.gfx.swapchain.extent,
 	}
-	vk.CmdSetScissor(e.g.cmd, 0, 1, &scissor)
+	vk.CmdSetScissor(e.gfx.cmd, 0, 1, &scissor)
 
-	draw_pipeline, _ := gfx.get_graphics_pipeline(e.g, data.draw_pipeline_h)
-	gfx.bind_pipeline(e.g, draw_pipeline)
+	draw_pipeline, _ := gfx.get_graphics_pipeline(e.gfx, data.draw_pipeline_h)
+	gfx.bind_pipeline(e.gfx, draw_pipeline)
 	offset := vk.DeviceSize{}
-	vk.CmdBindVertexBuffers(e.g.cmd, 0, 1, &data.ssbo.buffer, &offset)
-	gfx.bind_descriptor_set(e.g, draw_pipeline, &data.draw_descriptor_set)
-	vk.CmdDraw(e.g.cmd, PARTICLE_COUNT, 1, 0, 0)
+	vk.CmdBindVertexBuffers(e.gfx.cmd, 0, 1, &data.ssbo.buffer, &offset)
+	gfx.bind_descriptor_set(e.gfx, draw_pipeline, &data.draw_descriptor_set)
+	vk.CmdDraw(e.gfx.cmd, PARTICLE_COUNT, 1, 0, 0)
 
 	// End gfx. ------------------------------
 	sync_data := eldr.Sync_Data {
 		wait_semaphore_infos = []vk.SemaphoreSubmitInfo{{semaphore = data.semaphore, stageMask = {.VERTEX_INPUT}}},
 	}
-	gfx.end_render(e.g, frame_data, sync_data)
+	gfx.end_render(e.gfx, frame_data, sync_data)
 }
 
 @(private = "file")

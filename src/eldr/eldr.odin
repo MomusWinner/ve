@@ -9,14 +9,14 @@ import stb_image "vendor:stb/image"
 import vk "vendor:vulkan"
 
 Eldr :: struct {
-	g: ^gfx.Graphics,
+	gfx: ^gfx.Graphics,
 }
 
 // @(private) TODO: make private
 ctx: Eldr
 
 destroy_eldr :: proc() {
-	gfx.destroy_graphic(ctx.g)
+	gfx.destroy_graphic(ctx.gfx)
 }
 
 load_image :: proc(path: string, desired_channels: i32 = 0) -> (image: Image, ok: bool) {

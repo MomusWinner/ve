@@ -83,7 +83,7 @@ main :: proc() {
 
 
 	eldr.init_graphic(window)
-	g := eldr.ctx.g // TODO:
+	g := eldr.ctx.gfx // TODO:
 	defer eldr.destroy_eldr()
 
 	// scene := create_room_scene()
