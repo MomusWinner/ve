@@ -93,10 +93,10 @@ particle_scene_init :: proc(s: ^Scene) {
 	s.data = renderer
 }
 
-particle_scene_update :: proc(s: ^Scene, dt: f64) {
+particle_scene_update :: proc(s: ^Scene) {
 	e := &eldr.ctx
 	data := cast(^ParticleSceneData)s.data
-	_particle_update_uniform_buffer(data.uniform_buffer, cast(f32)dt)
+	_particle_update_uniform_buffer(data.uniform_buffer, eldr.get_delta_time())
 	particle_compute(e.gfx, data)
 }
 

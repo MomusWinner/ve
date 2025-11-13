@@ -276,3 +276,7 @@ on_screen_resized :: proc(g: ^Graphics) {
 	_recreate_swapchain(g.swapchain, g.vulkan_state, g.window)
 	_surface_manager_recreate_surfaces(g.surface_manager, g)
 }
+
+wait_render_completion :: proc(g: ^Graphics) {
+	vk.DeviceWaitIdle(g.vulkan_state.device)
+}

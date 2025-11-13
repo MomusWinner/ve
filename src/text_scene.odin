@@ -39,7 +39,7 @@ text_scene_init :: proc(s: ^Scene) {
 
 	data.font = eldr.load_font(
 		eldr.Create_Font_Info {
-			path = "assets/fonts/RobotoMono.ttf",
+			path = "assets/buildin/fonts/RobotoMono.ttf",
 			size = 128,
 			padding = 2,
 			atlas_width = 2024,
@@ -68,14 +68,14 @@ elapsed_time: f64
 @(private = "file")
 time_delta: f64 = 2
 
-text_scene_update :: proc(s: ^Scene, dt: f64) {
+text_scene_update :: proc(s: ^Scene) {
 	data := cast(^Text_Scene_Data)s.data
-	value += cast(f32)dt * 5
+	value += eldr.get_delta_time() * 5
 	result := (math.sin_f32(value) + 1) / 2
 	eldr.text_set_color(&data.text, eldr.color{1, result, 1, 1})
 
 
-	elapsed_time += dt
+	elapsed_time += cast(f64)eldr.get_delta_time()
 	if elapsed_time > time_delta {
 		elapsed_time = 0
 		strings.write_string(&data.builder, "\n... ")

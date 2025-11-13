@@ -19,10 +19,10 @@ g_ctx: runtime.Context
 vec3 :: [3]f32
 
 last_time: f64
-dt: f64
 
-quite: bool = false
 reload: bool = false
+
+current_scene: Scene
 
 main :: proc() {
 	when ODIN_DEBUG {
@@ -51,72 +51,59 @@ main :: proc() {
 	defer log.destroy_console_logger(context.logger)
 	g_ctx = context
 
-	// TODO: update vendor bindings to glfw 3.4 and use this to set a custom allocator.
-	// glfw.InitAllocator()
-
-	// TODO: set up Vulkan allocator.
-
-	if !glfw.Init() {log.panic("glfw: could not be initialized")}
-	defer glfw.Terminate()
-
-	glfw.WindowHint(glfw.CLIENT_API, glfw.NO_API)
-	glfw.WindowHint(glfw.RESIZABLE, glfw.TRUE)
-
-	window := glfw.CreateWindow(800, 600, "Vulkan", nil, nil)
-	defer glfw.DestroyWindow(window) // TODO: move to render
-
 	key_handler :: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: c.int) {
-		if key == glfw.KEY_ESCAPE || key == glfw.KEY_Q {
-			quite = true
-		}
 		if key == glfw.KEY_R {
 			reload = true
 		}
 	}
 
-	glfw.SetKeyCallback(window, key_handler)
+	eldr.init(
+		nil,
+		fixed_update,
+		update,
+		draw,
+		destroy,
+		{gfx = {swapchain_sample_count = ._4}, window = {width = 800, height = 400, title = "VulkanTest"}},
+	)
+
+	glfw.SetKeyCallback(eldr.ctx.window, key_handler)
 	glfw.SetErrorCallback(glfw_error_callback)
 
-
-	eldr.init_graphic(window, {swapchain_sample_count = ._4})
-
 	g := eldr.ctx.gfx // TODO:
-	defer eldr.destroy_eldr()
 
-	scene := create_room_scene()
-	// scene := create_text_scene()
-	// scene := create_empty_scene()
-	// scene := create_test_scene()
+	current_scene = create_room_scene()
+	// current_scene = create_text_scene()
+	// current_scene = create_empty_scene()
+	// current_scene = create_test_scene()
 
-	scene.init(&scene)
+	current_scene.init(&current_scene)
 
-	for !eldr.window_should_close() {
-		free_all(context.temp_allocator)
-
-		if (quite) {
-			break
-		}
-
-		dt = glfw.GetTime() - last_time
-		last_time = glfw.GetTime()
-		// log.info("FPS: ", 1 / dt)
-
-		scene.update(&scene, dt)
-		scene.draw(&scene)
-
-		if (reload) {
-			vk.WaitForFences(g.vulkan_state.device, 1, &g.fence, true, max(u64))
-			gfx.pipeline_hot_reload(g)
-			reload = false
-		}
-
-		time.sleep(time.Second * 1 / 60) // FPS limit
-	}
-	vk.DeviceWaitIdle(g.vulkan_state.device)
-
-	scene.destroy(&scene)
+	eldr.run()
 
 	log.info("Successfuly close")
+}
+
+
+fixed_update :: proc(user_data: rawptr) {
+}
+
+update :: proc(user_data: rawptr) {
+	g := eldr.ctx.gfx // TODO:
+	if (reload) {
+		vk.WaitForFences(g.vulkan_state.device, 1, &g.fence, true, max(u64))
+		gfx.pipeline_hot_reload(g)
+		reload = false
+	}
+
+	current_scene.update(&current_scene) // TODO:
+}
+
+draw :: proc(user_data: rawptr) {
+	current_scene.draw(&current_scene)
+}
+
+destroy :: proc(user_data: rawptr) {
+	current_scene.destroy(&current_scene)
 }
 
 glfw_error_callback :: proc "c" (code: i32, description: cstring) {

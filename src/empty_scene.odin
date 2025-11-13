@@ -22,7 +22,7 @@ create_empty_scene :: proc() -> Scene {
 empty_scene_init :: proc(s: ^Scene) {
 }
 
-empty_scene_update :: proc(s: ^Scene, dt: f64) {
+empty_scene_update :: proc(s: ^Scene) {
 }
 
 empty_scene_draw :: proc(s: ^Scene) {

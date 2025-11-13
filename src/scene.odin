@@ -12,7 +12,7 @@ import vk "vendor:vulkan"
 Scene :: struct {
 	data:    rawptr,
 	init:    proc(s: ^Scene),
-	update:  proc(s: ^Scene, dt: f64),
+	update:  proc(s: ^Scene),
 	draw:    proc(s: ^Scene),
 	destroy: proc(s: ^Scene),
 }

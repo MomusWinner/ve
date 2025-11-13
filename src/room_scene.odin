@@ -70,9 +70,9 @@ room_scene_init :: proc(s: ^Scene) {
 }
 
 value: f32
-room_scene_update :: proc(s: ^Scene, dt: f64) {
+room_scene_update :: proc(s: ^Scene) {
 	data := cast(^Room_Scene_Data)s.data
-	value += cast(f32)dt
+	value += eldr.get_delta_time()
 	result := math.sin_f32(value)
 	data.transform.position.x = result * 2
 	data.transform.dirty = true
@@ -99,7 +99,6 @@ room_scene_draw :: proc(s: ^Scene) {
 	surface_frame := eldr.begin_surface(surface, frame)
 	{
 		eldr.draw_model(surface_frame, data.model, &data.camera, &data.transform)
-		gfx.draw_square(eldr.ctx.gfx, surface_frame, &data.camera, {0.5, 0, 0}, {1, 1, 1}, {1, 1, 1, 1})
 	}
 	eldr.end_surface(surface, surface_frame)
 

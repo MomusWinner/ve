@@ -45,7 +45,7 @@ test_scene_init :: proc(s: ^Scene) {
 	s.data = data
 }
 
-test_scene_update :: proc(s: ^Scene, dt: f64) {
+test_scene_update :: proc(s: ^Scene) {
 	// data := cast(^Room_Scene_Data)s.data
 	// value += cast(f32)dt
 	// result := math.sin_f32(value)

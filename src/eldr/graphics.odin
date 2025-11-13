@@ -6,7 +6,8 @@ import imp "importer"
 import "vendor:glfw"
 import vk "vendor:vulkan"
 
-init_graphic :: proc(window: glfw.WindowHandle, gfx_init_info: Graphics_Init_Info) {
+@(private)
+_init_graphic :: proc(window: glfw.WindowHandle, gfx_init_info: Graphics_Init_Info) {
 	ctx.window = window
 	ctx.gfx = new(gfx.Graphics)
 	gfx.set_logger(context.logger)
