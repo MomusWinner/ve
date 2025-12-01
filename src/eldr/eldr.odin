@@ -158,7 +158,6 @@ unload_image :: proc(image: Image) {
 	defer stb_image.image_free(image.data)
 }
 
-
 @(private = "file")
 _glfw_error_callback :: proc "c" (code: i32, description: cstring) {
 	context = g_err_ctx
