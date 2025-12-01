@@ -69,6 +69,7 @@ Game_Time :: struct {
 Eldr :: struct {
 	window:            glfw.WindowHandle,
 	gfx:               ^gfx.Graphics,
+	should_close:      bool,
 	game_time:         Game_Time,
 	user_data:         rawptr,
 	fixed_update_proc: game_event_proc,

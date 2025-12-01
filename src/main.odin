@@ -66,6 +66,10 @@ update :: proc(user_data: rawptr) {
 		gfx.pipeline_hot_reload(g)
 	}
 
+	if (eldr.is_key_pressed(.Escape)) {
+		eldr.close()
+	}
+
 	current_scene.update(&current_scene)
 }
 

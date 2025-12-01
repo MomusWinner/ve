@@ -67,7 +67,7 @@ init :: proc(
 }
 
 run :: proc() {
-	for (!_window_should_close()) {
+	for (!_window_should_close() && !ctx.should_close) {
 		start := glfw.GetTime()
 
 		ctx.game_time.delta_time = cast(f32)(start - ctx.game_time.previous_frame)
@@ -111,6 +111,10 @@ run :: proc() {
 	ctx.destroy_proc(ctx.user_data)
 
 	_destroy()
+}
+
+close :: proc() {
+	ctx.should_close = true
 }
 
 @(private)
