@@ -53,7 +53,7 @@ room_scene_init :: proc(s: ^Scene) {
 
 	gfx.init_gfx_trf(&data.transform)
 
-	data.transform.position = {0, 0, -1}
+	data.transform.position = {0, -0.5, -1}
 	data.transform.scale = {1, 1, 1}
 	data.transform.dirty = true
 
@@ -71,10 +71,10 @@ value: f32
 room_scene_update :: proc(s: ^Scene) {
 	data := cast(^Room_Scene_Data)s.data
 	value += eldr.get_delta_time()
-	result := math.sin_f32(value)
-	dir := eldr.trf_get_right(&data.transform)
-	data.transform.position = dir * result
-	data.transform.dirty = true
+	// result := math.sin_f32(value)
+	eldr.trf_rotate(&data.transform, {1, 1, 1}, value)
+	// dir := eldr.trf_get_right(&data.transform)
+	// eldr.trf_set_position(&data.transform, dir * result)
 }
 
 room_scene_draw :: proc(s: ^Scene) {
@@ -100,8 +100,13 @@ room_scene_draw :: proc(s: ^Scene) {
 	{
 		gfx.draw_model(surface_frame, data.model, &data.camera, &data.transform)
 
-		forward := eldr.trf_get_forward(&data.transform)
-		gfx.draw_square(surface_frame, &data.camera, data.transform.position + forward * 0.3, 0.1, {1, 0, 0, 1})
+		gfx.draw_square(
+			surface_frame,
+			&data.camera,
+			data.transform.position + eldr.trf_get_up(&data.transform) * 0.5,
+			0.1,
+			{1, 0, 0, 1},
+		)
 	}
 	gfx.end_surface(surface, surface_frame)
 

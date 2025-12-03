@@ -22,7 +22,7 @@ _trf_apply :: proc(trf: ^Gfx_Transform, loc := #caller_location) {
 		return
 	}
 
-	model := glsl.mat4Translate(trf.position) * glsl.mat4Scale(trf.scale)
+	model := common.trf_get_matrix(trf)
 	trf.dirty = false
 
 	buffer := bindless_get_buffer(trf.buffer_h)
