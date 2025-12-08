@@ -158,9 +158,10 @@ create_text :: proc(
 	common.trf_set_scale(&trf, vec3{1, 1, 1} * size)
 
 	material := Material{}
-	init_material(&material, ctx.buildin.text_pipeline_h)
-	material.color = color
-	material.texture_h = font.texture_h
+
+	init_mtrl_base(&material, ctx.buildin.text_pipeline_h)
+	mtrl_base_set_texture_h(&material, font.texture_h)
+	mtrl_base_set_color(&material, color)
 
 	text := Text {
 		text      = text,
@@ -191,7 +192,7 @@ text_set_string :: proc(text: ^Text, text_str: string, loc := #caller_location) 
 text_set_color :: proc(text: ^Text, color: vec4, loc := #caller_location) {
 	assert_not_nil(text, loc)
 
-	material_set_color(&text.material, color)
+	mtrl_base_set_color(&text.material, color)
 }
 
 text_set_position :: proc(text: ^Text, position: vec3, loc := #caller_location) {
@@ -205,7 +206,7 @@ draw_text :: proc(text: ^Text, frame_data: Frame_Data, camera: ^Camera, loc := #
 	assert_gfx_ctx(loc)
 	assert_not_nil(text, loc)
 
-	_material_apply(&text.material)
+	text.material.apply(&text.material)
 	_trf_apply(&text.transform)
 
 	pipeline, ok := get_graphics_pipeline(text.material.pipeline_h)
@@ -241,7 +242,7 @@ destroy_text :: proc(text: ^Text, loc := #caller_location) {
 
 	destroy_buffer(&text.vbo)
 	destroy_trf(&text.transform)
-	destroy_material(&text.material)
+	destroy_mtrl(&text.material)
 }
 
 @(private)

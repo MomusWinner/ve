@@ -31,7 +31,7 @@ _trf_apply :: proc(trf: ^Gfx_Transform, loc := #caller_location) {
 		model = model,
 	}
 
-	_fill_buffer(buffer, size_of(Transform_UBO), &transform_ubo)
+	fill_buffer(buffer, size_of(Transform_UBO), &transform_ubo)
 }
 
 destroy_trf :: proc(transform: ^Gfx_Transform, loc := #caller_location) {

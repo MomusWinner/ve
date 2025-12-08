@@ -9,14 +9,14 @@ import "eldr"
 import gfx "eldr/graphics"
 
 Room_Scene_Data :: struct {
-	room_texture_h:            eldr.Texture_Handle,
-	model:                     eldr.Model,
-	material:                  eldr.Material,
-	transform:                 eldr.Gfx_Transform,
-	camera:                    eldr.Camera,
-	pipeline_h:                eldr.Pipeline_Handle,
-	surface_h:                 eldr.Surface_Handle,
-	postprocessing_pipeline_h: eldr.Pipeline_Handle,
+	room_texture_h:            gfx.Texture_Handle,
+	model:                     gfx.Model,
+	material:                  gfx.Material,
+	transform:                 gfx.Gfx_Transform,
+	camera:                    gfx.Camera,
+	pipeline_h:                gfx.Pipeline_Handle,
+	surface_h:                 gfx.Surface_Handle,
+	postprocessing_pipeline_h: gfx.Pipeline_Handle,
 }
 
 create_room_scene :: proc() -> Scene {
@@ -28,7 +28,7 @@ create_room_scene :: proc() -> Scene {
 	}
 }
 
-depth_h: eldr.Texture_Handle
+depth_h: gfx.Texture_Handle
 
 room_scene_init :: proc(s: ^Scene) {
 	data := new(Room_Scene_Data)
@@ -42,19 +42,18 @@ room_scene_init :: proc(s: ^Scene) {
 	data.room_texture_h = eldr.load_texture("./assets/room.png")
 	data.model = eldr.load_model("./assets/room.obj")
 
-	pipeline_h := create_default_pipeline()
+	data.pipeline_h = create_default_pipeline()
 
-	gfx.init_material(&data.material, pipeline_h)
-	data.material.texture_h = data.room_texture_h
+	gfx.init_mtrl_base(&data.material, data.pipeline_h)
+	gfx.mtrl_base_set_texture_h(&data.material, data.room_texture_h)
 
-	data.material.color = {1, 1, 1, 1}
 	append(&data.model.materials, data.material)
 	append(&data.model.mesh_material, 0)
 
 	gfx.init_gfx_trf(&data.transform)
 
 	data.transform.position = {0, -0.5, -1}
-	data.transform.scale = {1, 1, 1}
+	data.transform.scale = {0.5, 0.5, 0.5}
 	data.transform.dirty = true
 
 	data.surface_h = gfx.create_surface(._4)
@@ -72,7 +71,7 @@ room_scene_update :: proc(s: ^Scene) {
 	data := cast(^Room_Scene_Data)s.data
 	value += eldr.get_delta_time()
 	// result := math.sin_f32(value)
-	eldr.trf_rotate(&data.transform, {1, 1, 1}, value)
+	eldr.trf_rotate(&data.transform, {0, 1, 0}, value)
 	// dir := eldr.trf_get_right(&data.transform)
 	// eldr.trf_set_position(&data.transform, dir * result)
 }
@@ -113,16 +112,16 @@ room_scene_draw :: proc(s: ^Scene) {
 	// Swapchain
 	base_frame := gfx.begin_draw(frame)
 	{
-		gfx.draw_surface(surface, base_frame, data.postprocessing_pipeline_h)
+		gfx.draw_surface(surface, &data.camera, base_frame, data.postprocessing_pipeline_h)
 	}
 	gfx.end_draw(base_frame)
 
 	// // No Postprocessing
-	// base_frame := eldr.begin_draw(frame)
+	// base_frame := gfx.begin_draw(frame)
 	// {
-	// 	eldr.draw_model(base_frame, data.model, &data.camera, &data.transform)
+	// 	gfx.draw_model(base_frame, data.model, &data.camera, &data.transform)
 	// }
-	// eldr.end_draw(frame)
+	// gfx.end_draw(frame)
 
 	// --------------------------------------------------------------------------------------------------------------------
 	// End gfx.
@@ -133,7 +132,7 @@ room_scene_destroy :: proc(s: ^Scene) {
 	data := cast(^Room_Scene_Data)s.data
 
 	eldr.unload_texture(data.room_texture_h)
-	eldr.destroy_model(&data.model)
+	gfx.destroy_model(&data.model)
 	gfx.destroy_surface(data.surface_h)
 
 	free(data)

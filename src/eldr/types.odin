@@ -14,46 +14,46 @@ color :: common.color
 Vertex :: common.Vertex
 Image :: common.Image
 
-Graphics_Init_Info :: gfx.Graphics_Init_Info
-Graphics_Limits :: gfx.Graphics_Limits
-
-Camera :: gfx.Camera
-
-Texture :: gfx.Texture
-Texture_Handle :: gfx.Texture_Handle
-
-Gfx_Transform :: gfx.Gfx_Transform
-
-Material :: gfx.Material
-
-Pipeline :: gfx.Pipeline
-Pipeline_Handle :: gfx.Pipeline_Handle
-Create_Pipeline_Info :: gfx.Create_Pipeline_Info
-Pipeline_Set_Info :: gfx.Pipeline_Set_Info
-Pipeline_Set_Binding_Info :: gfx.Pipeline_Set_Binding_Info
-Pipeline_Stage_Info :: gfx.Pipeline_Stage_Info
-
-Model :: gfx.Model
-Frame_Data :: gfx.Frame_Data
-Frame_Status :: gfx.Frame_Status
-
-Create_Font_Info :: gfx.Create_Font_Info
-Font :: gfx.Font
-Text :: gfx.Text
-CharacterRegion :: gfx.CharacterRegion
-
-Surface :: gfx.Surface
-Surface_Handle :: gfx.Surface_Handle
-
-Sample_Count_Flag :: gfx.Sample_Count_Flag
-Command_Buffer :: gfx.Command_Buffer
-Gfx_Size :: gfx.Device_Size
-Pipeline_Stage_Flags :: gfx.Pipeline_Stage_Flags
-Sync_Data :: gfx.Sync_Data
-Semaphore :: gfx.Semaphore
-Vertex_Input_Binding_Description :: gfx.Vertex_Input_Binding_Description
-Vertex_Input_Attribute_Description :: gfx.Vertex_Input_Attribute_Description
-Vertex_Input_Description :: gfx.Vertex_Input_Description
+// Graphics_Init_Info :: gfx.Graphics_Init_Info
+// Graphics_Limits :: gfx.Graphics_Limits
+//
+// Camera :: gfx.Camera
+//
+// Texture :: gfx.Texture
+// Texture_Handle :: gfx.Texture_Handle
+//
+// Gfx_Transform :: gfx.Gfx_Transform
+//
+// Material :: gfx.Material
+//
+// Pipeline :: gfx.Pipeline
+// Pipeline_Handle :: gfx.Pipeline_Handle
+// Create_Pipeline_Info :: gfx.Create_Pipeline_Info
+// Pipeline_Set_Info :: gfx.Pipeline_Set_Info
+// Pipeline_Set_Binding_Info :: gfx.Pipeline_Set_Binding_Info
+// Pipeline_Stage_Info :: gfx.Pipeline_Stage_Info
+//
+// Model :: gfx.Model
+// Frame_Data :: gfx.Frame_Data
+// Frame_Status :: gfx.Frame_Status
+//
+// Create_Font_Info :: gfx.Create_Font_Info
+// Font :: gfx.Font
+// Text :: gfx.Text
+// CharacterRegion :: gfx.CharacterRegion
+//
+// Surface :: gfx.Surface
+// Surface_Handle :: gfx.Surface_Handle
+//
+// Sample_Count_Flag :: gfx.Sample_Count_Flag
+// Command_Buffer :: gfx.Command_Buffer
+// Gfx_Size :: gfx.Device_Size
+// Pipeline_Stage_Flags :: gfx.Pipeline_Stage_Flags
+// Sync_Data :: gfx.Sync_Data
+// Semaphore :: gfx.Semaphore
+// Vertex_Input_Binding_Description :: gfx.Vertex_Input_Binding_Description
+// Vertex_Input_Attribute_Description :: gfx.Vertex_Input_Attribute_Description
+// Vertex_Input_Description :: gfx.Vertex_Input_Description
 
 game_event_proc :: proc(user_data: rawptr)
 
@@ -68,7 +68,6 @@ Game_Time :: struct {
 
 Eldr :: struct {
 	window:            glfw.WindowHandle,
-	gfx:               ^gfx.Graphics,
 	should_close:      bool,
 	game_time:         Game_Time,
 	user_data:         rawptr,
@@ -79,7 +78,7 @@ Eldr :: struct {
 }
 
 Eldr_Info :: struct {
-	gfx:    Graphics_Init_Info,
+	gfx:    gfx.Graphics_Init_Info,
 	window: struct {
 		title:  string,
 		width:  i32,

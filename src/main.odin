@@ -5,6 +5,7 @@ import "core:log"
 import "core:mem"
 import "eldr"
 import gfx "eldr/graphics"
+import mg "eldr/tools/material_generator"
 
 current_scene: Scene
 
@@ -43,12 +44,14 @@ main :: proc() {
 		{gfx = {swapchain_sample_count = ._4}, window = {width = 800, height = 400, title = "VulkanTest"}},
 	)
 
+
 	current_scene = create_room_scene()
 	// current_scene = create_text_scene()
 	// current_scene = create_empty_scene()
 	// current_scene = create_test_scene()
 
 	current_scene.init(&current_scene)
+
 
 	eldr.run()
 
@@ -61,7 +64,6 @@ fixed_update :: proc(user_data: rawptr) {
 
 update :: proc(user_data: rawptr) {
 	if (eldr.is_key_pressed(.R)) {
-		g := eldr.ctx.gfx // TODO:
 		gfx.pipeline_hot_reload()
 	}
 

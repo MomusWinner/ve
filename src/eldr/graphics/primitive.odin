@@ -79,9 +79,8 @@ draw_square :: proc(frame_data: Frame_Data, camera: ^Camera, position: vec3, sca
 
 	material := _temp_pool_acquire_material()
 	model.materials[0] = material
-	material_set_pipeline(&model.materials[0], ctx.buildin.primitive_pipeline_h)
-	material_set_color(&model.materials[0], color)
-	_material_apply(&model.materials[0])
+	mtrl_set_pipeline(&model.materials[0], ctx.buildin.primitive_pipeline_h)
+	mtrl_base_set_color(&model.materials[0], color)
 
 	transform := _temp_pool_acquire_transform()
 	common.trf_set_position(&transform, position)

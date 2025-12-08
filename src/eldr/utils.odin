@@ -2,8 +2,9 @@ package eldr
 
 import "common"
 import "core:fmt"
+import gfx "graphics"
 
-assert_frame_data :: proc(frame_data: Frame_Data) {
+assert_frame_data :: proc(frame_data: gfx.Frame_Data) {
 	assert(frame_data.cmd != nil)
 }
 

@@ -11,7 +11,7 @@
 
 // Register unifrom buffer
 #define RegisterUniform(Name, Struct) \
-	layout(set = BindlessDescriptorSet, binding = BindlessUniformBinding) \
+	layout(std140, set = BindlessDescriptorSet, binding = BindlessUniformBinding) \
 	uniform Name Struct \
 	GetLayoutVariableName(Name)[]
 
@@ -37,7 +37,6 @@ layout( push_constant ) uniform constants {
 	uint camera;
 	uint model;
 	uint material;
-	uint pad0;
 } PushConstants;
 
 
@@ -49,24 +48,14 @@ layout( push_constant ) uniform constants {
 //   uint texture;
 // } uDrawParameters;
 
-RegisterUniform(Transform, {
-    mat4 model;
-    mat4 view;
-    mat4 proj;
-});
-
-#define getTransform() GetResource(Transform, 0) // TODO
-
-
-// Model_UBO :: struct {
-// 	model:   glsl.mat4,
-// 	tangens: glsl.mat4,
-// }
+// RegisterUniform(Transform, {
+//     mat4 model;
+//     mat4 view;
+//     mat4 proj;
+// });
 //
-// Material_UBO :: struct {
-// 	color:   vec4,
-// 	texture: u32,
-// }
+// #define getTransform() GetResource(Transform, 0) // TODO
+
 
 RegisterUniform(Model, {
     mat4 model;
@@ -77,9 +66,9 @@ RegisterUniform(Model, {
 RegisterUniform(Material, {
 	vec4 color;
 	uint texture;
-	uint pad0;
-	uint pad1;
-	uint pad2;
+	// uint pad0; // TODO:
+	// uint pad1;
+	// uint pad2;
 });
 
 #define getMaterial() GetResource(Material, PushConstants.material)

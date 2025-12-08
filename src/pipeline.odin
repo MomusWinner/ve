@@ -8,55 +8,55 @@ import vk "vendor:vulkan"
 
 default_shader_attribute :: proc(
 ) -> (
-	eldr.Vertex_Input_Binding_Description,
-	[4]eldr.Vertex_Input_Attribute_Description,
+	gfx.Vertex_Input_Binding_Description,
+	[4]gfx.Vertex_Input_Attribute_Description,
 ) {
-	bind_description := eldr.Vertex_Input_Binding_Description {
+	bind_description := gfx.Vertex_Input_Binding_Description {
 		binding   = 0,
-		stride    = size_of(eldr.Vertex),
+		stride    = size_of(gfx.Vertex),
 		inputRate = .VERTEX,
 	}
 
-	attribute_descriptions := [4]eldr.Vertex_Input_Attribute_Description {
-		eldr.Vertex_Input_Attribute_Description {
+	attribute_descriptions := [4]gfx.Vertex_Input_Attribute_Description {
+		gfx.Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 0,
 			format = .R32G32B32_SFLOAT,
-			offset = cast(u32)offset_of(eldr.Vertex, position),
+			offset = cast(u32)offset_of(gfx.Vertex, position),
 		},
-		eldr.Vertex_Input_Attribute_Description {
+		gfx.Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 1,
 			format = .R32G32_SFLOAT,
-			offset = cast(u32)offset_of(eldr.Vertex, tex_coord),
+			offset = cast(u32)offset_of(gfx.Vertex, tex_coord),
 		},
-		eldr.Vertex_Input_Attribute_Description {
+		gfx.Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 2,
 			format = .R32G32B32_SFLOAT,
-			offset = cast(u32)offset_of(eldr.Vertex, normal),
+			offset = cast(u32)offset_of(gfx.Vertex, normal),
 		},
-		eldr.Vertex_Input_Attribute_Description {
+		gfx.Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 3,
 			format = .R32G32B32A32_SFLOAT,
-			offset = cast(u32)offset_of(eldr.Vertex, color),
+			offset = cast(u32)offset_of(gfx.Vertex, color),
 		},
 	}
 
 	return bind_description, attribute_descriptions
 }
 
-create_default_pipeline :: proc() -> eldr.Pipeline_Handle {
+create_default_pipeline :: proc() -> gfx.Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	set_infos := []eldr.Pipeline_Set_Info{gfx.create_bindless_pipeline_set_info(context.temp_allocator)}
+	set_infos := []gfx.Pipeline_Set_Info{gfx.create_bindless_pipeline_set_info(context.temp_allocator)}
 
 	push_constants := []gfx.Push_Constant_Range { 	// const
 		{offset = 0, size = size_of(gfx.Push_Constant), stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS},
 	}
 
-	create_info := eldr.Create_Pipeline_Info {
+	create_info := gfx.Create_Pipeline_Info {
 		set_infos = set_infos[:],
 		push_constants = push_constants,
 		vertex_input_description = {
@@ -64,7 +64,7 @@ create_default_pipeline :: proc() -> eldr.Pipeline_Handle {
 			binding_description = vert_bind,
 			attribute_descriptions = vert_attr[:],
 		},
-		stage_infos = []eldr.Pipeline_Stage_Info {
+		stage_infos = []gfx.Pipeline_Stage_Info {
 			{stage = {.VERTEX}, shader_path = "assets/buildin/shaders/default.vert"},
 			{stage = {.FRAGMENT}, shader_path = "assets/buildin/shaders/default.frag"},
 		},
@@ -90,16 +90,16 @@ create_default_pipeline :: proc() -> eldr.Pipeline_Handle {
 	return handle
 }
 
-create_postprocessing_pipeline :: proc() -> eldr.Pipeline_Handle {
+create_postprocessing_pipeline :: proc() -> gfx.Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	set_infos := []eldr.Pipeline_Set_Info{gfx.create_bindless_pipeline_set_info(context.temp_allocator)}
+	set_infos := []gfx.Pipeline_Set_Info{gfx.create_bindless_pipeline_set_info(context.temp_allocator)}
 
 	push_constants := []gfx.Push_Constant_Range { 	// const
 		{offset = 0, size = size_of(gfx.Push_Constant), stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS},
 	}
 
-	create_info := eldr.Create_Pipeline_Info {
+	create_info := gfx.Create_Pipeline_Info {
 		set_infos = set_infos[:],
 		push_constants = push_constants,
 		vertex_input_description = {
@@ -107,7 +107,7 @@ create_postprocessing_pipeline :: proc() -> eldr.Pipeline_Handle {
 			binding_description = vert_bind,
 			attribute_descriptions = vert_attr[:],
 		},
-		stage_infos = []eldr.Pipeline_Stage_Info {
+		stage_infos = []gfx.Pipeline_Stage_Info {
 			{stage = {.VERTEX}, shader_path = "assets/buildin/shaders/postprocessing.vert"},
 			{stage = {.FRAGMENT}, shader_path = "assets/buildin/shaders/postprocessing.frag"},
 		},

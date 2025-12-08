@@ -46,7 +46,7 @@ init :: proc(init_info: Graphics_Init_Info, window: ^glfw.WindowHandle) {
 destroy :: proc() {
 	_destroy_buildin()
 	_destroy_temp_pools()
-	_destory_bindless()
+	_destroy_bindless()
 	_destroy_deffered_destructor()
 	_destroy_sync_obj()
 	_destroy_swapchain()
@@ -588,6 +588,8 @@ _init_buildin_resources :: proc() {
 
 @(private = "file")
 _destroy_buildin :: proc() {
+	delete(ctx.buildin.square.materials)
+	ctx.buildin.square.materials = {}
 	destroy_model(&ctx.buildin.square)
 	free(ctx.buildin)
 }

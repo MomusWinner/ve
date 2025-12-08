@@ -170,18 +170,22 @@ end_surface :: proc(surface: ^Surface, frame_data: Frame_Data, loc := #caller_lo
 	}
 }
 
-draw_surface :: proc(surface: ^Surface, frame_data: Frame_Data, pipeline_h: Pipeline_Handle, loc := #caller_location) {
+draw_surface :: proc(
+	surface: ^Surface,
+	camera: ^Camera,
+	frame_data: Frame_Data,
+	pipeline_h: Pipeline_Handle,
+	loc := #caller_location,
+) {
 	assert_gfx_ctx(loc)
 	assert_not_nil(surface, loc)
 
-	camera := Camera{} // FIX:
 	color_attachment, has_color := surface.color_attachment.?
 	assert(has_color, loc = loc)
 
 	surface.model.materials[0].pipeline_h = pipeline_h
-	surface.model.materials[0].texture_h = color_attachment.resolve_handle
-	_material_apply(&surface.model.materials[0])
-	draw_model(frame_data, surface.model, &camera, &surface.transform, loc)
+	mtrl_base_set_texture_h(&surface.model.materials[0], color_attachment.resolve_handle)
+	draw_model(frame_data, surface.model, camera, &surface.transform, loc)
 }
 
 _init_surface_manager :: proc() {
@@ -262,8 +266,9 @@ _surface_manager_recreate_surfaces :: proc(sm: ^Surface_Manager, loc := #caller_
 	assert_gfx_ctx(loc)
 	assert_not_nil(sm, loc)
 
+	must(vk.QueueWaitIdle(ctx.vulkan_state.graphics_queue))
 	for &surface in sm.surfaces.values {
-		surface_recreate(&surface)
+		_surface_recreate(&surface)
 	}
 }
 
@@ -284,7 +289,7 @@ _surface_init :: proc(
 	}
 
 	material: Material
-	init_material(&material, {})
+	init_mtrl_base(&material, {})
 
 	mesh := create_square_mesh(1)
 
@@ -322,9 +327,8 @@ _surface_destroy :: proc(surface: ^Surface, loc := #caller_location) {
 	}
 }
 
-surface_recreate :: proc(surface: ^Surface, loc := #caller_location) {
-	must(vk.QueueWaitIdle(ctx.vulkan_state.graphics_queue))
-
+@(private = "file")
+_surface_recreate :: proc(surface: ^Surface, loc := #caller_location) {
 	surface.extent.width = get_screen_width()
 	surface.extent.height = get_screen_height()
 

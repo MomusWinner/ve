@@ -11,9 +11,9 @@ import "eldr"
 import gfx "eldr/graphics"
 
 Text_Scene_Data :: struct {
-	font:        eldr.Font,
-	camera:      eldr.Camera,
-	text:        eldr.Text,
+	font:        gfx.Font,
+	camera:      gfx.Camera,
+	text:        gfx.Text,
 	builder:     strings.Builder,
 	color_value: f32,
 }
@@ -37,7 +37,7 @@ text_scene_init :: proc(s: ^Scene) {
 	data.camera.dirty = true
 
 	data.font = gfx.load_font(
-		eldr.Create_Font_Info {
+		gfx.Create_Font_Info {
 			path = "assets/buildin/fonts/RobotoMono.ttf",
 			size = 128,
 			padding = 2,

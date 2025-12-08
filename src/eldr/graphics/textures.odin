@@ -22,7 +22,7 @@ create_texture :: proc(
 
 	// Staging Buffer
 	staging_buffer := _create_buffer(image_size, {.TRANSFER_SRC}, .AUTO, {.HOST_ACCESS_SEQUENTIAL_WRITE})
-	_fill_buffer(&staging_buffer, image_size, image.data)
+	fill_buffer(&staging_buffer, image_size, image.data)
 	_cmd_buffer_barrier(sc.command_buffer, staging_buffer, {.HOST_WRITE}, {.TRANSFER_READ}, {.HOST}, {.TRANSFER})
 	defer destroy_buffer(&staging_buffer)
 

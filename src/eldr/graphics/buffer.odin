@@ -44,8 +44,7 @@ create_ssbo :: proc(g: ^Graphics, data: rawptr, size: vk.DeviceSize) -> Buffer {
 	return _create_device_local_buffer(size, data, {.VERTEX_BUFFER, .STORAGE_BUFFER}, {.SHADER_READ}, {.VERTEX_SHADER})
 }
 
-@(private)
-_fill_buffer :: proc(
+fill_buffer :: proc(
 	buffer: ^Buffer,
 	buffer_size: vk.DeviceSize,
 	data: rawptr,
@@ -124,7 +123,7 @@ _create_device_local_buffer :: proc(
 
 	// Staging buffer
 	staging_buffer := _create_buffer(size, {.TRANSFER_SRC}, .AUTO, {.HOST_ACCESS_SEQUENTIAL_WRITE})
-	_fill_buffer(&staging_buffer, size, data)
+	fill_buffer(&staging_buffer, size, data)
 	_cmd_buffer_barrier(sc.command_buffer, staging_buffer, {.HOST_WRITE}, {.TRANSFER_READ}, {.HOST}, {.TRANSFER})
 	defer destroy_buffer(&staging_buffer)
 

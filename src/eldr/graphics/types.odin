@@ -284,20 +284,44 @@ Camera :: struct {
 
 // MODEL
 
+
 Material :: struct {
-	color:      vec4,
-	texture_h:  Maybe(Texture_Handle),
 	pipeline_h: Pipeline_Handle,
 	buffer_h:   Buffer_Handle,
 	dirty:      bool,
+	apply:      proc(data: ^Material, loc := #caller_location),
+	data:       rawptr,
+	type:       typeid,
 }
 
-Material_UBO :: struct {
+@(material)
+Base_Material :: struct {
+	color:     vec4,
+	texture_h: Texture_Handle,
+}
+
+Base_Material_UBO :: struct {
 	color:   vec4,
 	texture: u32,
 	pad0:    u32,
 	pad1:    u32,
 	pad2:    u32,
+}
+
+// Base_Material :: struct {
+// 	pipeline_h: Pipeline_Handle,
+// 	buffer_h:   Buffer_Handle,
+// 	dirty:      bool,
+// 	apply:      proc(data: Base_Material),
+// 	data:       any,
+// }
+
+Some_Material :: struct {
+	color:   vec4,
+	texture: u32,
+	test:    u32,
+	test2:   u32,
+	test3:   u32,
 }
 
 Gfx_Transform :: struct {
@@ -430,7 +454,9 @@ Sync_Data :: struct {
 // BINDLESS
 
 Texture_Handle :: distinct hm.Handle
+Nil_Texture_Handle :: Texture_Handle{max(u32), max(u32)}
 Buffer_Handle :: distinct hm.Handle
+Nil_Buffer_Handle :: Texture_Handle{max(u32), max(u32)}
 
 Bindless :: struct {
 	set:        vk.DescriptorSet,

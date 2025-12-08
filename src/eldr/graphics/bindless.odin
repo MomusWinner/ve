@@ -92,6 +92,13 @@ bindless_get_texture :: proc(texture_h: Texture_Handle, loc := #caller_location)
 	return hm.get(&ctx.bindless.textures, texture_h)
 }
 
+@(require_results)
+bindless_has_texture :: proc(texture_h: Texture_Handle, loc := #caller_location) -> bool {
+	assert_gfx_ctx(loc)
+
+	return hm.has_handle(&ctx.bindless.textures, texture_h)
+}
+
 bindless_bind :: proc(cmd: vk.CommandBuffer, pipeline_layout: vk.PipelineLayout, loc := #caller_location) {
 	assert_gfx_ctx(loc)
 
@@ -107,7 +114,7 @@ _init_bindless :: proc(loc := #caller_location) {
 }
 
 @(private)
-_destory_bindless :: proc(loc := #caller_location) {
+_destroy_bindless :: proc(loc := #caller_location) {
 	assert(ctx.bindless != nil, "Bindless already uninitialized", loc)
 
 	_bindless_destroy(ctx.bindless)

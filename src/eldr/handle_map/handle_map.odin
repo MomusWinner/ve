@@ -18,6 +18,8 @@ Handle :: struct {
 	index:      u32,
 }
 
+Nil_Handle :: Handle{max(u32), max(u32)}
+
 Sparse_Index :: struct {
 	generation:    u32,
 	index_or_next: u32,

@@ -65,7 +65,7 @@ draw_mesh :: proc(
 	assert(ok, "Couldn't get pipeline")
 
 	_trf_apply(transform)
-	_material_apply(material)
+	material.apply(material)
 
 	bind_pipeline(pipeline, frame_data, loc)
 
@@ -101,8 +101,8 @@ destroy_model :: proc(model: ^Model) {
 	for &mesh in model.meshes {
 		destroy_mesh(&mesh)
 	}
-	for &mat in model.materials { 	// TODO: material
-		destroy_material(&mat)
+	for &mat in model.materials {
+		destroy_mtrl(&mat)
 	}
 
 	delete(model.meshes)

@@ -808,7 +808,7 @@ _shader_compile :: proc(pm: ^Pipeline_Manager, path: string, loc := #caller_loca
 
 	data, ok := common.read_file(path, context.temp_allocator)
 	if !ok {
-		log.panic("Couldn't load file", path, location = loc)
+		log.panic("Failed to load file:", path, location = loc)
 	}
 
 	source := strings.clone_to_cstring(cast(string)data, context.temp_allocator)
@@ -830,7 +830,7 @@ _shader_compile :: proc(pm: ^Pipeline_Manager, path: string, loc := #caller_loca
 	)
 
 	if (shaderc.result_get_compilation_status(result) != shaderc.compilationStatus.Success) {
-		log.error("Couldn't compile", path, "shader")
+		log.error("Failed to compile ", path, "shader")
 		log.panic(string(shaderc.result_get_error_message(result)))
 	} else {
 		log.debug("Success compile shader", path)

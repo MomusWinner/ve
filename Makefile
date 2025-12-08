@@ -4,9 +4,8 @@ BIN_DIR := bin
 DEBUG_BIN := $(BIN_DIR)/debug/$(APP_NAME)
 RELEASE_BIN := $(BIN_DIR)/release/$(APP_NAME)
 
-ODIN_FLAGS ?= 
-# -sanitize:address
-ODIN_DEBUG_FLAGS := -debug ${ODIN_FLAGS} 
+ODIN_FLAGS := -custom-attribute:material
+ODIN_DEBUG_FLAGS := -debug ${ODIN_FLAGS}
 ODIN_RELEASE_FLAGS := -o:speed -no-bounds-check -disable-assert ${ODIN_FLAGS}
 ODIN := odin
 
@@ -38,7 +37,21 @@ run-release: release
 	@echo "🐇 Running $(RELEASE_BIN)..."
 	@$(RELEASE_BIN)
 
+.PHONY: gen
+gen:
+	@echo "Generating..."
+	odin run ./src/eldr/tools/material_generator/ -- \
+		-outpute-glsl-dir:assets/shaders/ \
+		-src-dir:./src \
+		-gfx-import:"gfx eldr/graphics"
+
+.PHONY: gen-eldr
+gen-eldr:
+	@echo "Generating..."
+	odin run ./src/eldr/tools/material_generator/ -- \
+		-outpute-glsl-dir:assets/buildin/shaders/ \
+		-src-dir:./src/eldr/graphics/
+
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR)
-
