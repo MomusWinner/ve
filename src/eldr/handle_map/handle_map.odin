@@ -114,18 +114,3 @@ remove :: proc(m: ^Handle_Map($T, $HT), h: HT) -> (value: T, ok: bool) {
 	}
 	return
 }
-
-main :: proc() {
-	m: Handle_Map(f32, Handle)
-	init(&m)
-	defer destroy(&m)
-
-	value := f32(123.456)
-	h := insert(&m, value)
-
-	ptr, _ := get(&m, h)
-	assert(ptr^ == value)
-	assert(has_handle(&m, h))
-	remove(&m, h)
-	assert(!has_handle(&m, h))
-}
