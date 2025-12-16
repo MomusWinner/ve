@@ -240,6 +240,7 @@ mtrl_{0:s}_get_{2:s} :: proc(m: {4:s}Material, loc := #caller_location) -> {3:s}
 mtrl_{0:s}_apply :: proc(m: ^{2:s}Material, loc := #caller_location) {{
 	assert(m != nil, loc = loc)
 	assert(m.type == typeid_of(^{1:s}), loc = loc)
+	if !m.dirty do return
 	mat := cast(^{1:s})m.data
 	mtrl_data := __{1:s}_Data {{
 	`,
