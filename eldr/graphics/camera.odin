@@ -19,6 +19,7 @@ camera_init :: proc(camera: ^Camera, loc := #caller_location) {
 	camera.near = DEFAULT_NEAR
 	camera.far = DEFAULT_FAR
 	camera.zoom = vec3{1, 1, 1}
+	camera.dirty = true
 
 	buffer := create_uniform_buffer(size_of(Camera_UBO))
 	camera._buffer_h = bindless_store_buffer(buffer, loc)
