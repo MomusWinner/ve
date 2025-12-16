@@ -40,8 +40,6 @@ Buildin_Resource :: struct {
 
 Vulkan_State :: struct {
 	enabled_layer_names:      []cstring,
-	// application_info:         vk.ApplicationInfo,
-	// instance_info:            vk.InstanceCreateInfo,
 	instance:                 vk.Instance,
 	physical_device:          vk.PhysicalDevice,
 	physical_device_property: vk.PhysicalDeviceProperties,
@@ -69,7 +67,6 @@ Graphics :: struct {
 	window:                    ^glfw.WindowHandle,
 	vulkan_state:              Vulkan_State,
 	limits:                    Graphics_Limits,
-	// msaa_samples:              vk.SampleCountFlags,
 	swapchain:                 ^Swap_Chain,
 	// managers
 	pipeline_manager:          ^Pipeline_Manager,
@@ -78,7 +75,7 @@ Graphics :: struct {
 	temp_transform_pool:       ^Temp_Transform_Pool,
 	bindless:                  ^Bindless,
 	cmd:                       vk.CommandBuffer,
-	image_available_semaphore: vk.Semaphore, // TODO:
+	image_available_semaphore: vk.Semaphore,
 	fence:                     vk.Fence,
 	swapchain_resized:         bool,
 	render_started:            bool,
@@ -276,10 +273,6 @@ Camera :: struct {
 	dirty:       bool,
 	last_aspect: f32,
 	_buffer_h:   Buffer_Handle, // Camera_UBO
-	// private
-	// view:       mat4,
-	// projection: mat4,
-	// aspect:     f32,
 }
 
 // MODEL
@@ -307,14 +300,6 @@ Base_Material_UBO :: struct {
 	pad1:    u32,
 	pad2:    u32,
 }
-
-// Base_Material :: struct {
-// 	pipeline_h: Pipeline_Handle,
-// 	buffer_h:   Buffer_Handle,
-// 	dirty:      bool,
-// 	apply:      proc(data: Base_Material),
-// 	data:       any,
-// }
 
 Some_Material :: struct {
 	color:   vec4,
@@ -398,7 +383,7 @@ Surface_Manager :: struct {
 }
 
 Surface :: struct {
-	model:            Model,
+	mesh:             Mesh,
 	transform:        Gfx_Transform,
 	color_attachment: Maybe(Surface_Color_Attachment),
 	depth_attachment: Maybe(Surface_Depth_Attachment),

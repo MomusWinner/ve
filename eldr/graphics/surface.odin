@@ -37,7 +37,7 @@ surface_add_color_attachment :: proc(
 	surface: ^Surface,
 	clear_value: color = {0.01, 0.01, 0.01, 1.0},
 	loc := #caller_location,
-) {
+) -> Texture_Handle {
 	assert_gfx_ctx(loc)
 	assert_not_nil(surface, loc)
 
@@ -70,6 +70,8 @@ surface_add_color_attachment :: proc(
 	color_attachment.resource = color_resource
 	color_attachment.resolve_handle = bindless_store_texture(color_resolve_resource)
 	surface.color_attachment = color_attachment
+
+	return color_attachment.resolve_handle
 }
 
 surface_add_depth_attachment :: proc(surface: ^Surface, clear_value: f32 = 1, loc := #caller_location) {
@@ -174,7 +176,7 @@ draw_surface :: proc(
 	surface: ^Surface,
 	camera: ^Camera,
 	frame_data: Frame_Data,
-	pipeline_h: Pipeline_Handle,
+	material: ^Material,
 	loc := #caller_location,
 ) {
 	assert_gfx_ctx(loc)
@@ -183,9 +185,7 @@ draw_surface :: proc(
 	color_attachment, has_color := surface.color_attachment.?
 	assert(has_color, loc = loc)
 
-	surface.model.materials[0].pipeline_h = pipeline_h
-	mtrl_base_set_texture_h(&surface.model.materials[0], color_attachment.resolve_handle)
-	draw_model(frame_data, surface.model, camera, &surface.transform, loc)
+	draw_mesh(frame_data, &surface.mesh, material, camera, &surface.transform, loc)
 }
 
 _init_surface_manager :: proc() {
@@ -288,23 +288,10 @@ _surface_init :: proc(
 		height = get_device_height(),
 	}
 
-	material: Material
-	init_mtrl_base(&material, {})
-
-	mesh := create_square_mesh(1)
-
-	meshes := make([]Mesh, 1)
-	meshes[0] = mesh
-
-	materials := make([dynamic]Material, 1, allocator)
-	materials[0] = material
-
-	mesh_material := make([dynamic]int, 1, allocator)
-	mesh_material[0] = 0
+	surface.mesh = create_square_mesh(1)
 
 	init_gfx_trf(&surface.transform)
 
-	surface.model = create_model(meshes, materials, mesh_material)
 	surface.sample_count = sample_count
 	surface.anisotropy = anisotropy
 }
@@ -314,7 +301,7 @@ _surface_destroy :: proc(surface: ^Surface, loc := #caller_location) {
 	assert_gfx_ctx(loc)
 	assert_not_nil(surface, loc)
 
-	destroy_model(&surface.model)
+	destroy_mesh(&surface.mesh)
 	color_attachment, has_color_attachment := surface.color_attachment.?
 	depth_attachment, has_depth_attachment := surface.depth_attachment.?
 
@@ -329,16 +316,16 @@ _surface_destroy :: proc(surface: ^Surface, loc := #caller_location) {
 
 @(private = "file")
 _surface_recreate :: proc(surface: ^Surface, loc := #caller_location) {
-	surface.extent.width = get_screen_width()
-	surface.extent.height = get_screen_height()
+	w := get_screen_width()
+	h := get_screen_height()
+	surface.extent.width = w
+	surface.extent.height = h
 
 	color_attachment, has_color_attachment := surface.color_attachment.?
 	depth_attachment, has_depth_attachment := surface.depth_attachment.?
 
 	if has_color_attachment {
-		destroy_texture(&color_attachment.resource)
-		bindless_destroy_texture(color_attachment.resolve_handle)
-		surface_add_color_attachment(surface)
+		_surface_resize_color_attachment(w, h, surface)
 	}
 
 	if has_depth_attachment {
@@ -467,4 +454,31 @@ _create_surface_depth_resource :: proc(
 		allocation = allocation,
 		allocation_info = allocation_info,
 	}
+}
+
+@(private)
+_surface_resize_color_attachment :: proc(width: u32, height: u32, surface: ^Surface, loc := #caller_location) {
+	assert_gfx_ctx(loc)
+	assert_not_nil(surface, loc)
+
+	old_color_attachment, has_color_attachment := surface.color_attachment.?
+	assert(has_color_attachment)
+
+	destroy_texture(&old_color_attachment.resource)
+	color_resource := _create_surface_color_resource(width, height, ctx.swapchain.format.format, surface.sample_count)
+	color_resolve_resource := _create_surface_color_resolve_resource(
+		width,
+		height,
+		surface.anisotropy,
+		ctx.swapchain.format.format,
+	)
+
+	color_attachment := old_color_attachment
+	color_attachment.info.imageView = color_resource.view
+	color_attachment.info.resolveImageView = color_resolve_resource.view
+	color_attachment.resource = color_resource
+	color_attachment.resolve_handle = old_color_attachment.resolve_handle
+	bindless_update_texture(color_attachment.resolve_handle, color_resolve_resource)
+
+	surface.color_attachment = color_attachment
 }
