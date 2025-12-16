@@ -11,11 +11,13 @@ import "core:math/rand"
 import "core:strings"
 
 Text_Scene_Data :: struct {
-	font:        gfx.Font,
-	camera:      gfx.Camera,
-	text:        gfx.Text,
-	builder:     strings.Builder,
-	color_value: f32,
+	font:         gfx.Font,
+	camera:       gfx.Camera,
+	text:         gfx.Text,
+	builder:      strings.Builder,
+	color_value:  f32,
+	elapsed_time: f64,
+	time_delta:   f64,
 }
 
 create_text_scene :: proc() -> Scene {
@@ -29,6 +31,8 @@ create_text_scene :: proc() -> Scene {
 
 text_scene_init :: proc(s: ^Scene) {
 	data := new(Text_Scene_Data)
+
+	data.time_delta = 2
 
 	gfx.camera_init(&data.camera)
 	data.camera.position = {0, 0, 2}
@@ -62,21 +66,16 @@ text_scene_init :: proc(s: ^Scene) {
 	s.data = data
 }
 
-@(private = "file")
-elapsed_time: f64
-@(private = "file")
-time_delta: f64 = 2
-
 text_scene_update :: proc(s: ^Scene) {
 	data := cast(^Text_Scene_Data)s.data
-	value += eldr.get_delta_time() * 5
-	result := (math.sin_f32(value) + 1) / 2
+	data.color_value += eldr.get_delta_time() * 5
+	result := (math.sin_f32(data.color_value) + 1) / 2
 	gfx.text_set_color(&data.text, eldr.color{1, result, 1, 1})
 
 
-	elapsed_time += cast(f64)eldr.get_delta_time()
-	if elapsed_time > time_delta {
-		elapsed_time = 0
+	data.elapsed_time += cast(f64)eldr.get_delta_time()
+	if data.elapsed_time > data.time_delta {
+		data.elapsed_time = 0
 		strings.write_string(&data.builder, "\n... ")
 		str := strings.to_string(data.builder)
 		gfx.text_set_string(&data.text, str)

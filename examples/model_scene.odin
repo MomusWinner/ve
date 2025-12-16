@@ -16,6 +16,7 @@ Model_Scene_Data :: struct {
 	camera:                    gfx.Camera,
 	pipeline_h:                gfx.Pipeline_Handle,
 	postprocessing_pipeline_h: gfx.Pipeline_Handle,
+	model_rotation:            f32,
 }
 
 create_model_scene :: proc() -> Scene {
@@ -59,11 +60,10 @@ model_scene_init :: proc(s: ^Scene) {
 	s.data = data
 }
 
-value: f32
 model_scene_update :: proc(s: ^Scene) {
 	data := cast(^Model_Scene_Data)s.data
-	value += eldr.get_delta_time()
-	eldr.trf_rotate(&data.transform, {0, 1, 0}, value)
+	data.model_rotation += eldr.get_delta_time()
+	eldr.trf_rotate(&data.transform, {0, 1, 0}, data.model_rotation)
 }
 
 model_scene_draw :: proc(s: ^Scene) {

@@ -47,10 +47,8 @@ main :: proc() {
 	// current_scene = create_postprocessing_scene()
 	// current_scene = create_text_scene()
 	// current_scene = create_empty_scene()
-	// current_scene = create_test_scene()
 
 	current_scene.init(&current_scene)
-
 
 	eldr.run()
 
