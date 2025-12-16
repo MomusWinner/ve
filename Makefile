@@ -40,10 +40,10 @@ run-release: release
 .PHONY: gen
 gen:
 	@echo "Generating..."
-	odin run ./src/eldr/tools/material_generator/ -- \
+	odin run ./eldr/tools/material_generator/ -- \
 		-outpute-glsl-dir:assets/shaders/ \
-		-src-dir:./src \
-		-gfx-import:"gfx eldr/graphics"
+		-src-dir:./examples \
+		-gfx-import:"gfx ../eldr/graphics"
 
 .PHONY: init-eldr
 gen-eldr:
