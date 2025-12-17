@@ -81,3 +81,7 @@ make gen-eldr
 make gen
 make run
 ```
+
+![Postprocessing](./docs/images/example_postprocessing.png)
+![Text](./docs/images/example_text.png)
+![Ligh](./docs/images/example_light.png)
