@@ -83,6 +83,11 @@ Graphics :: struct {
 	buildin:                   ^Buildin_Resource,
 }
 
+TextureEncoding :: enum {
+	Linear,
+	sRGB,
+}
+
 Texture :: struct {
 	name:            string,
 	image:           vk.Image,

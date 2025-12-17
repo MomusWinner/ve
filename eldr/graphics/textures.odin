@@ -11,6 +11,7 @@ create_texture :: proc(
 	name: string = "empty",
 	mip_levels: u32 = 0,
 	anisotropy: f32 = 1,
+	encoding: TextureEncoding = .sRGB,
 	loc := #caller_location,
 ) -> Texture {
 	assert_gfx_ctx(loc)
@@ -30,13 +31,33 @@ create_texture :: proc(
 
 	switch image.pixel {
 	case .R8:
-		format = .R8_SRGB
+		switch encoding {
+		case .Linear:
+			format = .R8_UNORM
+		case .sRGB:
+			format = .R8_SRGB
+		}
 	case .RG8:
-		format = .R8G8_SRGB
+		switch encoding {
+		case .Linear:
+			format = .R8G8_UNORM
+		case .sRGB:
+			format = .R8G8_SRGB
+		}
 	case .RGB8:
-		format = .R8G8B8_SRGB
+		switch encoding {
+		case .Linear:
+			format = .R8G8B8_UNORM
+		case .sRGB:
+			format = .R8G8B8_SRGB
+		}
 	case .RGBA8:
-		format = .R8G8B8A8_SRGB
+		switch encoding {
+		case .Linear:
+			format = .R8G8B8A8_UNORM
+		case .sRGB:
+			format = .R8G8B8A8_SRGB
+		}
 	}
 
 	// Image
