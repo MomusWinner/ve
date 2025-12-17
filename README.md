@@ -2,7 +2,6 @@
 A small Vulkan Rendering Engine
 
 > [!WARNING]
-> **Development Status**   
 > **Eldr is currently under active development** and is not recommended for production use. The API may change significantly between versions.
 > 
 > **Platform Support Note:** Currently only Linux is supported. Windows support is planned for future releases.
@@ -18,7 +17,7 @@ Real-time shader and pipeline recompilation during runtime
 ```
 
 ### Material Code Generation
-Automatic material system generation from material structures. A key advantage of this approach is type-safe material interfaces. The generator also automatically adds padding for std140 alignment.
+Automatic material system generation from material structures. A key advantage of this approach is type-safe material interfaces. The generator also handles ``std140`` memory alignment by automatically adding the necessary padding.
 
 Example:
 ```odin
@@ -43,7 +42,7 @@ This generates two files:
 1. An Odin source file in your project package.
 2. A shader header file at ``assets/shader/gen_types.h``.
 
-The generator creates type-safe getters and setters for each field:
+The generated Odin source file provides type-safe getter and setter functions for each field in your material struct:
 ```odin
     material: gfx.Material
 
@@ -60,9 +59,9 @@ The generator creates type-safe getters and setters for each field:
 
 
 ### Bindless Rendering
-Modern bindless resource management
+Leverages modern GPU bindless descriptors to eliminate explicit texture and buffer bind calls, improving performance and simplifying resource management.
 
-### Archetype ECS
+### 🚧Archetype ECS🚧
 In development
 
 ## Vulkan Features
@@ -70,7 +69,7 @@ In development
 - Descriptor Indexing
 - Synchronization 2
 
-## Getting Started
+## Installetion
 
 ```bash
 # Clone the repository
@@ -81,7 +80,19 @@ make gen-eldr
 make gen
 make run
 ```
+## Examples
+
+#### Postprocessing
+Demonstrates a combination of screen-space blur and custom background color grading applied in post-processing.
 
 ![Postprocessing](./docs/images/example_postprocessing.png)
+
+#### Text
+Shows anti-aliased text rendering with support for custom fonts and layouts.
+
 ![Text](./docs/images/example_text.png)
-![Ligh](./docs/images/example_light.png)
+
+#### Light
+Example of simple lighting with ambient, diffuse components.
+
+![Light](./docs/images/example_light.png)
