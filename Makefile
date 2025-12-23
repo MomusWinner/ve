@@ -48,9 +48,9 @@ gen:
 .PHONY: init-eldr
 gen-eldr:
 	@echo "Generating..."
-	odin run ./src/eldr/tools/material_generator/ -- \
+	odin run ./eldr/tools/material_generator/ -- \
 		-outpute-glsl-dir:assets/buildin/shaders/ \
-		-src-dir:./src/eldr/graphics/
+		-src-dir:./eldr/graphics/
 
 .PHONY: clean
 clean:
