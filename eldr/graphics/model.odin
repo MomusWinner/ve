@@ -55,21 +55,20 @@ draw_mesh :: proc(
 
 	ebo, has_ebo := mesh.ebo.?
 
-	offset := vk.DeviceSize{}
-	vk.CmdBindVertexBuffers(frame_data.cmd, 0, 1, &mesh.vbo.buffer, &offset)
+	cmd_bind_vertex_buffer(frame_data, mesh.vbo)
 	if has_ebo {
-		vk.CmdBindIndexBuffer(frame_data.cmd, ebo.buffer, 0, .UINT16)
+		cmd_bind_index_buffer(frame_data, ebo)
 	}
 
-	pipeline, ok := get_graphics_pipeline(material.pipeline_h)
+	pipeline, ok := get_render_pipeline(material.pipeline_h)
 	assert(ok, "Couldn't get pipeline")
 
 	_trf_apply(transform)
 	material.apply(material)
 
-	bind_pipeline(pipeline, frame_data, loc)
+	g_pipeline := cmd_bind_render_pipeline(frame_data, pipeline, loc)
 
-	bindless_bind(frame_data.cmd, pipeline.layout)
+	cmd_bind_bindless(frame_data, g_pipeline)
 
 	const := Push_Constant {
 		camera   = _camera_get_buffer(camera, get_screen_aspect()).index,
@@ -77,19 +76,12 @@ draw_mesh :: proc(
 		material = material.buffer_h.index,
 	}
 
-	vk.CmdPushConstants(
-		frame_data.cmd,
-		pipeline.layout,
-		vk.ShaderStageFlags_ALL_GRAPHICS,
-		0,
-		size_of(Push_Constant),
-		&const,
-	)
+	cmd_push_constants(frame_data, g_pipeline, &const)
 
 	if has_ebo {
-		vk.CmdDrawIndexed(frame_data.cmd, cast(u32)len(mesh.indices), 1, 0, 0, 0)
+		cmd_draw_indexed(frame_data, cast(u32)len(mesh.indices))
 	} else {
-		vk.CmdDraw(frame_data.cmd, cast(u32)len(mesh.vertices), 1, 0, 0)
+		cmd_draw(frame_data, cast(u32)len(mesh.vertices))
 	}
 }
 

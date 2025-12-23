@@ -86,7 +86,6 @@ text_scene_draw :: proc(s: ^Scene) {
 	data := cast(^Text_Scene_Data)s.data
 
 	frame := gfx.begin_render()
-
 	// Begin gfx.
 	// --------------------------------------------------------------------------------------------------------------------
 

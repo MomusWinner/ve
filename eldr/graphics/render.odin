@@ -1,5 +1,6 @@
 package graphics
 
+import sm "core:container/small_array"
 import "core:log"
 import "vendor:glfw"
 import vk "vendor:vulkan"
@@ -235,10 +236,14 @@ begin_draw :: proc(frame: Frame_Data, clear_color: vec4 = {0.0, 0.0, 0.0, 1.0}) 
 	vk.CmdBeginRendering(frame.cmd, &rendering_info)
 
 	frame := frame
-	frame.surface_info = {
+
+
+	frame.surface_info = Surface_Info {
 		type         = .Swapchain,
 		sample_count = ctx.swapchain.sample_count,
+		depth_format = ctx.swapchain.depth_image.format,
 	}
+	sm.push(&frame.surface_info.color_formats, ctx.swapchain.color_image.format)
 
 	return frame
 }

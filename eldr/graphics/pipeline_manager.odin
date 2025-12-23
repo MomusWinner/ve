@@ -4,6 +4,7 @@ import "../common/"
 import hm "../handle_map"
 import "base:runtime"
 import "core:c"
+import sm "core:container/small_array"
 import "core:log"
 import "core:mem"
 import "core:path/filepath"
@@ -15,8 +16,8 @@ hot_reload_shaders :: proc() {
 	_pipeline_manager_hot_reload()
 }
 
-get_graphics_pipeline :: proc(handle: Pipeline_Handle) -> (^Graphics_Pipeline, bool) {
-	return _pipeline_manager_get_graphics_pipeline(ctx.pipeline_manager, handle)
+get_render_pipeline :: proc(handle: Render_Pipeline_Handle) -> (^Render_Pipeline, bool) {
+	return _pipeline_manager_get_render_pipeline(ctx.pipeline_manager, handle)
 }
 
 get_compute_pipeline :: proc(handle: Pipeline_Handle) -> (^Compute_Pipeline, bool) {
@@ -48,13 +49,13 @@ _pipeline_manager_init :: proc(pm: ^Pipeline_Manager, enable_compilation: bool) 
 
 @(private = "file")
 _pipeline_manager_destroy :: proc(pm: ^Pipeline_Manager) {
-	for &pipeline in pm.pipelines.values {
-		destroy_graphics_pipeline(&pipeline)
+	for &pipeline in pm.render_pipelines.values {
+		destroy_render_pipeline(&pipeline)
 	}
 	for &pipeline in pm.compute_pipelines.values {
 		destroy_compute_pipeline(&pipeline)
 	}
-	hm.destroy(&pm.pipelines)
+	hm.destroy(&pm.render_pipelines)
 	hm.destroy(&pm.compute_pipelines)
 	when DEBUG {
 		shaderc.compile_options_release(pm.compiler_options)
@@ -63,11 +64,11 @@ _pipeline_manager_destroy :: proc(pm: ^Pipeline_Manager) {
 }
 
 @(private)
-_pipeline_manager_registe_graphics_pipeline :: proc(
+_pipeline_manager_registe_render_pipeline :: proc(
 	pm: ^Pipeline_Manager,
-	pipeline: Graphics_Pipeline,
-) -> Pipeline_Handle {
-	return hm.insert(&pm.pipelines, pipeline)
+	pipeline: Render_Pipeline,
+) -> Render_Pipeline_Handle {
+	return hm.insert(&pm.render_pipelines, pipeline)
 }
 
 @(private)
@@ -79,14 +80,14 @@ _pipeline_manager_registe_compute_pipeline :: proc(
 }
 
 @(private = "file")
-_pipeline_manager_get_graphics_pipeline :: proc(
+_pipeline_manager_get_render_pipeline :: proc(
 	pm: ^Pipeline_Manager,
-	handle: Pipeline_Handle,
+	handle: Render_Pipeline_Handle,
 ) -> (
-	^Graphics_Pipeline,
+	^Render_Pipeline,
 	bool,
 ) {
-	return hm.get(&pm.pipelines, handle)
+	return hm.get(&pm.render_pipelines, handle)
 }
 
 @(private = "file")
@@ -108,9 +109,8 @@ _pipeline_manager_hot_reload :: proc() {
 	vk.WaitForFences(ctx.vulkan_state.device, 1, &fence, true, max(u64))
 
 	log.debug("--- RELOADING SHADERS ---")
-	for &pipeline in ctx.pipeline_manager.pipelines.values {
-		pipeline_info: ^Create_Pipeline_Info
-		_reload_graphics_pipeline(&pipeline)
+	for &pipeline in ctx.pipeline_manager.render_pipelines.values {
+		_reload_render_pipelines(&pipeline)
 	}
 }
 
@@ -172,14 +172,16 @@ _shader_result_releaser :: proc "system" (userData: rawptr, includeResult: ^shad
 	free(includeResult)
 }
 
-default_shader_attribute :: proc() -> (Vertex_Input_Binding_Description, [4]Vertex_Input_Attribute_Description) {
+default_shader_attribute :: proc() -> (Vertex_Input_Binding_Description, Vertex_Input_Attribute_Descriptions) {
 	bind_description := Vertex_Input_Binding_Description {
 		binding   = 0,
 		stride    = size_of(Vertex),
 		inputRate = .VERTEX,
 	}
 
-	attribute_descriptions := [4]Vertex_Input_Attribute_Description {
+	attribute_descriptions := Vertex_Input_Attribute_Descriptions{}
+	sm.push_back_elems(
+		&attribute_descriptions,
 		Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 0,
@@ -204,7 +206,7 @@ default_shader_attribute :: proc() -> (Vertex_Input_Binding_Description, [4]Vert
 			format = .R32G32B32A32_SFLOAT,
 			offset = cast(u32)offset_of(Vertex, color),
 		},
-	}
+	)
 
 	return bind_description, attribute_descriptions
 }

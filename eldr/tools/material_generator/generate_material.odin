@@ -185,7 +185,7 @@ generate_material_data :: proc(f: os.Handle, s: Material_Struct, gfx_pref: strin
 	fmt.fprintfln(
 		f,
 		`
-init_mtrl_{0:s} :: proc(m: ^{2:s}Material, pipeline_h: {2:s}Pipeline_Handle, loc := #caller_location) {{
+init_mtrl_{0:s} :: proc(m: ^{2:s}Material, pipeline_h: {2:s}Render_Pipeline_Handle, loc := #caller_location) {{
 	assert(m != nil, loc = loc)
 	m.pipeline_h = pipeline_h
 	material_data := new({1:s})

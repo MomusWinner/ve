@@ -2,6 +2,7 @@ package graphics
 
 import "../common/"
 import "core:c"
+import sm "core:container/small_array"
 import "core:fmt"
 import "core:log"
 import image "vendor:stb/image"
@@ -160,7 +161,7 @@ create_text :: proc(
 	material := Material{}
 
 	init_mtrl_base(&material, ctx.buildin.text_pipeline_h)
-	mtrl_base_set_texture_h(&material, font.texture_h)
+	mtrl_base_set_texture(&material, font.texture_h)
 	mtrl_base_set_color(&material, color)
 
 	text := Text {
@@ -209,31 +210,23 @@ draw_text :: proc(text: ^Text, frame_data: Frame_Data, camera: ^Camera, loc := #
 	text.material.apply(&text.material)
 	_trf_apply(&text.transform)
 
-	pipeline, ok := get_graphics_pipeline(text.material.pipeline_h)
+	pipeline, ok := get_render_pipeline(text.material.pipeline_h)
 	assert(ok)
 
-	offset := vk.DeviceSize{}
-	vk.CmdBindVertexBuffers(frame_data.cmd, 0, 1, &text.vbo.buffer, &offset)
+	cmd_bind_vertex_buffer(frame_data, text.vbo)
 
-	bind_pipeline(pipeline, frame_data)
-	bindless_bind(frame_data.cmd, pipeline.layout)
+	g_pipeline := cmd_bind_render_pipeline(frame_data, pipeline)
+
+	cmd_bind_bindless(frame_data, g_pipeline)
 
 	const := Push_Constant {
 		camera   = _camera_get_buffer(camera, get_screen_aspect()).index,
 		model    = text.transform.buffer_h.index,
 		material = text.material.buffer_h.index,
 	}
+	cmd_push_constants(frame_data, g_pipeline, &const)
 
-	vk.CmdPushConstants(
-		frame_data.cmd,
-		pipeline.layout,
-		vk.ShaderStageFlags_ALL_GRAPHICS,
-		0,
-		size_of(Push_Constant),
-		&const,
-	)
-
-	vk.CmdDraw(frame_data.cmd, cast(u32)len(text.vertices), 1, 0, 0)
+	cmd_draw(frame_data, cast(u32)len(text.vertices))
 }
 
 destroy_text :: proc(text: ^Text, loc := #caller_location) {
@@ -246,14 +239,16 @@ destroy_text :: proc(text: ^Text, loc := #caller_location) {
 }
 
 @(private)
-_text_shader_attribute :: proc() -> (Vertex_Input_Binding_Description, [2]Vertex_Input_Attribute_Description) {
+_text_shader_attribute :: proc() -> (Vertex_Input_Binding_Description, Vertex_Input_Attribute_Descriptions) {
 	bind_description := Vertex_Input_Binding_Description {
 		binding   = 0,
 		stride    = size_of(FontVertex),
 		inputRate = .VERTEX,
 	}
 
-	attribute_descriptions := [2]Vertex_Input_Attribute_Description {
+	attribute_descriptions := Vertex_Input_Attribute_Descriptions{}
+	sm.push(
+		&attribute_descriptions,
 		Vertex_Input_Attribute_Description {
 			binding = 0,
 			location = 0,
@@ -266,36 +261,36 @@ _text_shader_attribute :: proc() -> (Vertex_Input_Binding_Description, [2]Vertex
 			format = .R32G32_SFLOAT,
 			offset = cast(u32)offset_of(FontVertex, tex_coords),
 		},
-	}
+	)
 
 	return bind_description, attribute_descriptions
 }
 
 @(private)
-_text_default_pipeline :: proc() -> Pipeline_Handle {
+_text_default_pipeline :: proc() -> Render_Pipeline_Handle {
 	vert_bind, vert_attr := _text_shader_attribute()
 
-	set_infos := []Pipeline_Set_Info{create_bindless_pipeline_set_info(context.temp_allocator)}
+	set_infos := Set_Infos{}
+	sm.push_back(&set_infos, create_bindless_pipeline_set_info())
 
-	push_constants := []Push_Constant_Range { 	// const
-		{offset = 0, size = size_of(Push_Constant), stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS},
-	}
+	stages := Stage_Infos{}
+	sm.push_back_elems(
+		&stages,
+		Pipeline_Stage_Info{stage = .Vertex, shader_path = "assets/buildin/shaders/text.vert"},
+		Pipeline_Stage_Info{stage = .Fragment, shader_path = "assets/buildin/shaders/text.frag"},
+	)
 
 	create_info := Create_Pipeline_Info {
-		set_infos = set_infos[:],
-		push_constants = push_constants,
+		set_infos = set_infos,
+		bindless = true,
 		vertex_input_description = {
 			input_rate = .VERTEX,
 			binding_description = vert_bind,
-			attribute_descriptions = vert_attr[:],
+			attribute_descriptions = vert_attr,
 		},
-		stage_infos = []Pipeline_Stage_Info {
-			{stage = {.VERTEX}, shader_path = "assets/buildin/shaders/text.vert"},
-			{stage = {.FRAGMENT}, shader_path = "assets/buildin/shaders/text.frag"},
-		},
+		stage_infos = stages,
 		input_assembly = {topology = .TRIANGLE_LIST},
 		rasterizer = {polygon_mode = .FILL, line_width = 1, cull_mode = {}, front_face = .CLOCKWISE},
-		multisampling = {sample_count = ._4, min_sample_shading = 1},
 		depth = {
 			enable = true,
 			write_enable = true,
@@ -307,12 +302,7 @@ _text_default_pipeline :: proc() -> Pipeline_Handle {
 		stencil = {enable = true, front = {}, back = {}},
 	}
 
-	handle, ok := create_graphics_pipeline(&create_info)
-	if !ok {
-		log.info("couldn't create text pipeline")
-	}
-
-	return handle
+	return create_render_pipeline(create_info)
 }
 
 @(private = "file")

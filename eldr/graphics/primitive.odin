@@ -1,33 +1,35 @@
 package graphics
 
 import "../common"
+import sm "core:container/small_array"
 import "core:log"
 import vk "vendor:vulkan"
 
-create_primitive_pipeline :: proc() -> Pipeline_Handle {
+create_primitive_pipeline :: proc() -> Render_Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	set_infos := []Pipeline_Set_Info{create_bindless_pipeline_set_info(context.temp_allocator)}
+	set_infos := Set_Infos{}
+	sm.push_back(&set_infos, create_bindless_pipeline_set_info())
 
-	push_constants := []Push_Constant_Range { 	// const
-		{offset = 0, size = size_of(Push_Constant), stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS},
-	}
+	stages := Stage_Infos{}
+	sm.push_back_elems(
+		&stages,
+		Pipeline_Stage_Info{stage = .Vertex, shader_path = "assets/buildin/shaders/shape.vert"},
+		Pipeline_Stage_Info{stage = .Fragment, shader_path = "assets/buildin/shaders/shape.frag"},
+	)
+
 
 	create_info := Create_Pipeline_Info {
-		set_infos = set_infos[:],
-		push_constants = push_constants,
+		set_infos = set_infos,
+		bindless = true,
 		vertex_input_description = {
 			input_rate = .VERTEX,
 			binding_description = vert_bind,
-			attribute_descriptions = vert_attr[:],
+			attribute_descriptions = vert_attr,
 		},
-		stage_infos = []Pipeline_Stage_Info {
-			{stage = {.VERTEX}, shader_path = "assets/buildin/shaders/shape.vert"},
-			{stage = {.FRAGMENT}, shader_path = "assets/buildin/shaders/shape.frag"},
-		},
+		stage_infos = stages,
 		input_assembly = {topology = .TRIANGLE_LIST},
 		rasterizer = {polygon_mode = .FILL, line_width = 1, cull_mode = {}, front_face = .COUNTER_CLOCKWISE},
-		multisampling = {sample_count = ._4, min_sample_shading = 1},
 		depth = {
 			enable = true,
 			write_enable = true,
@@ -39,12 +41,7 @@ create_primitive_pipeline :: proc() -> Pipeline_Handle {
 		stencil = {enable = true, front = {}, back = {}},
 	}
 
-	handle, ok := create_graphics_pipeline(&create_info)
-	if !ok {
-		log.info("couldn't create default pipeline")
-	}
-
-	return handle
+	return create_render_pipeline(create_info)
 }
 
 create_square_mesh :: proc(size: f32, allocator := context.allocator) -> Mesh {

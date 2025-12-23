@@ -2,7 +2,7 @@ package graphics
 
 import "core:math/linalg/glsl"
 
-mtrl_set_pipeline :: proc(material: ^Material, pipeline_h: Pipeline_Handle, loc := #caller_location) {
+mtrl_set_pipeline :: proc(material: ^Material, pipeline_h: Render_Pipeline_Handle, loc := #caller_location) {
 	assert_not_nil(material, loc)
 	material.pipeline_h = pipeline_h
 }

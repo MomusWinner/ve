@@ -2,6 +2,82 @@ package graphics
 
 import vk "vendor:vulkan"
 
+cmd_bind_vertex_buffer :: proc(
+	frame_data: Frame_Data,
+	buffer: Buffer,
+	offset := vk.DeviceSize{},
+	loc := #caller_location,
+) {
+	assert(.VERTEX_BUFFER in buffer.usage, loc = loc)
+
+	offset := offset
+	buffer := buffer
+
+	vk.CmdBindVertexBuffers(frame_data.cmd, 0, 1, &buffer.buffer, &offset)
+}
+
+cmd_bind_index_buffer :: proc(
+	frame_data: Frame_Data,
+	buffer: Buffer,
+	offset := vk.DeviceSize{},
+	index_type := vk.IndexType.UINT16,
+	loc := #caller_location,
+) {
+	assert(.INDEX_BUFFER in buffer.usage, loc = loc)
+
+	offset := offset
+	buffer := buffer
+
+	vk.CmdBindIndexBuffer(frame_data.cmd, buffer.buffer, offset, index_type)
+}
+
+cmd_push_constants :: proc(frame_data: Frame_Data, pipeline: Pipeline, const: ^$T, loc := #caller_location) {
+	assert_frame_data(frame_data, loc)
+
+	vk.CmdPushConstants(frame_data.cmd, pipeline.layout, vk.ShaderStageFlags_ALL_GRAPHICS, 0, size_of(const^), const)
+}
+
+cmd_draw :: proc(frame_data: Frame_Data, vertex_count: u32, instance_count: u32 = 1, loc := #caller_location) {
+	assert_frame_data(frame_data, loc)
+
+	vk.CmdDraw(frame_data.cmd, vertex_count, instance_count, 0, 0)
+}
+
+cmd_draw_indexed :: proc(frame_data: Frame_Data, vertex_count: u32, instance_count: u32 = 1, loc := #caller_location) {
+	assert_frame_data(frame_data, loc)
+
+	vk.CmdDrawIndexed(frame_data.cmd, vertex_count, 1, 0, 0, 0)
+}
+
+cmd_bind_render_pipeline :: proc(
+	frame_data: Frame_Data,
+	pipeline: ^Render_Pipeline,
+	loc := #caller_location,
+) -> Graphics_Pipeline {
+	assert_frame_data(frame_data, loc)
+
+	g_pipeline := render_pipeline_get_pipeline(pipeline, frame_data.surface_info)
+	vk.CmdBindPipeline(frame_data.cmd, .GRAPHICS, g_pipeline.pipeline)
+
+	return g_pipeline
+}
+
+cmd_bind_compute_pipeline :: proc(pipeline: Compute_Pipeline, frame_data: Frame_Data, loc := #caller_location) {
+	assert_frame_data(frame_data, loc)
+
+	vk.CmdBindPipeline(frame_data.cmd, .COMPUTE, pipeline.pipeline)
+}
+
+cmd_bind_descriptor_set :: proc(pipeline: ^Pipeline, descriptor_set: [^]vk.DescriptorSet) {
+	vk.CmdBindDescriptorSets(ctx.cmd, .GRAPHICS, pipeline.layout, 0, 1, descriptor_set, 0, nil)
+}
+
+cmd_bind_bindless :: proc(frame_data: Frame_Data, pipeline: Pipeline, loc := #caller_location) {
+	assert_gfx_ctx(loc)
+
+	vk.CmdBindDescriptorSets(frame_data.cmd, .GRAPHICS, pipeline.layout, 0, 1, &ctx.bindless.set, 0, nil)
+}
+
 @(private)
 SingleCommand :: struct {
 	command_buffer: vk.CommandBuffer,

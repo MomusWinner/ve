@@ -1,6 +1,7 @@
 package graphics
 
 import hm "../handle_map"
+import sm "core:container/small_array"
 import "core:log"
 import vk "vendor:vulkan"
 
@@ -64,29 +65,34 @@ bindless_get_buffer :: proc(buffer_h: Buffer_Handle, loc := #caller_location) ->
 }
 
 @(require_results)
-create_bindless_pipeline_set_info :: proc(allocator := context.allocator) -> Pipeline_Set_Info {
-	binding_infos := make([]Pipeline_Set_Binding_Info, 3, allocator)
-	binding_infos[0].binding = UNIFORM_BINDING
-	binding_infos[0].descriptor_type = .UNIFORM_BUFFER
-	binding_infos[0].descriptor_count = BINDLESS_DESCRIPTOR_COUNT
-	binding_infos[0].stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS
+create_bindless_pipeline_set_info :: proc() -> Pipeline_Set_Info {
+	binding_infos := Binding_Infos{}
+	sm.push(
+		&binding_infos,
+		Pipeline_Set_Binding_Info {
+			binding = UNIFORM_BINDING,
+			descriptor_type = .UNIFORM_BUFFER,
+			descriptor_count = BINDLESS_DESCRIPTOR_COUNT,
+			stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS,
+			flags = vk.DescriptorBindingFlags{.UPDATE_AFTER_BIND, .PARTIALLY_BOUND},
+		},
+		Pipeline_Set_Binding_Info {
+			binding = STORAGE_BINDING,
+			descriptor_type = .STORAGE_BUFFER,
+			descriptor_count = BINDLESS_DESCRIPTOR_COUNT,
+			stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS,
+			flags = vk.DescriptorBindingFlags{.UPDATE_AFTER_BIND, .PARTIALLY_BOUND},
+		},
+		Pipeline_Set_Binding_Info {
+			binding = TEXTURE_BINDING,
+			descriptor_type = .COMBINED_IMAGE_SAMPLER,
+			descriptor_count = BINDLESS_DESCRIPTOR_COUNT,
+			stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS,
+			flags = vk.DescriptorBindingFlags{.UPDATE_AFTER_BIND, .PARTIALLY_BOUND},
+		},
+	)
 
-	binding_infos[1].binding = STORAGE_BINDING
-	binding_infos[1].descriptor_type = .STORAGE_BUFFER
-	binding_infos[1].descriptor_count = BINDLESS_DESCRIPTOR_COUNT
-	binding_infos[1].stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS
-
-	binding_infos[2].binding = TEXTURE_BINDING
-	binding_infos[2].descriptor_type = .COMBINED_IMAGE_SAMPLER
-	binding_infos[2].descriptor_count = BINDLESS_DESCRIPTOR_COUNT
-	binding_infos[2].stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS
-
-	flags := make([]vk.DescriptorBindingFlags, 3)
-	flags[0] = {.UPDATE_AFTER_BIND, .PARTIALLY_BOUND}
-	flags[1] = {.UPDATE_AFTER_BIND, .PARTIALLY_BOUND}
-	flags[2] = {.UPDATE_AFTER_BIND, .PARTIALLY_BOUND}
-
-	return Pipeline_Set_Info{set = 0, binding_infos = binding_infos, flags = flags}
+	return Pipeline_Set_Info{binding_infos = binding_infos}
 }
 
 @(require_results)
@@ -101,12 +107,6 @@ bindless_has_texture :: proc(texture_h: Texture_Handle, loc := #caller_location)
 	assert_gfx_ctx(loc)
 
 	return hm.has_handle(&ctx.bindless.textures, texture_h)
-}
-
-bindless_bind :: proc(cmd: vk.CommandBuffer, pipeline_layout: vk.PipelineLayout, loc := #caller_location) {
-	assert_gfx_ctx(loc)
-
-	vk.CmdBindDescriptorSets(cmd, .GRAPHICS, pipeline_layout, 0, 1, &ctx.bindless.set, 0, nil)
 }
 
 @(private)

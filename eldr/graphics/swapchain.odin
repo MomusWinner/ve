@@ -149,6 +149,7 @@ _swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
 	swapchain.color_image = Texture {
 		name            = "swapchain_image",
 		image           = image,
+		format          = color_format,
 		view            = view,
 		allocation      = allocation,
 		allocation_info = allocation_info,
@@ -175,6 +176,7 @@ _swapchain_setupt_depth_buffer :: proc(swapchain: ^Swap_Chain, command_buffer: v
 	view := _create_image_view(image, format, {.DEPTH}, 1)
 	swapchain.depth_image = Texture {
 		image           = image,
+		format          = format,
 		view            = view,
 		allocation      = allocation,
 		allocation_info = allocation_info,

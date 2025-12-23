@@ -2,6 +2,7 @@ package graphics
 
 import hm "../handle_map/"
 import "base:runtime"
+import sm "core:container/small_array"
 import "core:log"
 import "core:mem"
 import "core:time"
@@ -144,9 +145,13 @@ begin_surface :: proc(surface: ^Surface, frame_data: Frame_Data, loc := #caller_
 	vk.CmdBeginRendering(cmd, &rendering_info)
 
 	frame_data := frame_data
-	frame_data.surface_info = {
+	frame_data.surface_info = Surface_Info {
 		type         = .Surface,
 		sample_count = surface.sample_count,
+		depth_format = depth_attachment.resource.format if has_depth_attachment else .UNDEFINED,
+	}
+	if (has_color_attachment) {
+		sm.push(&frame_data.surface_info.color_formats, color_attachment.resource.format)
 	}
 
 	return frame_data

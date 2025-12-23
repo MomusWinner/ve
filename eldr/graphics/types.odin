@@ -2,6 +2,7 @@ package graphics
 
 import "../common"
 import hm "../handle_map"
+import sm "core:container/small_array"
 import "core:math/linalg/glsl"
 import "shaderc"
 import "vendor:glfw"
@@ -22,6 +23,7 @@ quat :: common.quat
 Vertex :: common.Vertex
 Image :: common.Image
 
+Sample_Count_Flags :: vk.SampleCountFlags
 Sample_Count_Flag :: vk.SampleCountFlag
 Semaphore :: vk.Semaphore
 Vertex_Input_Binding_Description :: vk.VertexInputBindingDescription
@@ -32,9 +34,9 @@ Command_Buffer :: vk.CommandBuffer
 Pipeline_Stage_Flags :: vk.PipelineStageFlags
 
 Buildin_Resource :: struct {
-	default_pipeline_h:   Pipeline_Handle,
-	primitive_pipeline_h: Pipeline_Handle,
-	text_pipeline_h:      Pipeline_Handle,
+	default_pipeline_h:   Render_Pipeline_Handle,
+	primitive_pipeline_h: Render_Pipeline_Handle,
+	text_pipeline_h:      Render_Pipeline_Handle,
 	square:               Model,
 }
 
@@ -131,6 +133,7 @@ Pipeline_Set_Binding_Info :: struct {
 	descriptor_type:  vk.DescriptorType,
 	descriptor_count: u32,
 	stage_flags:      vk.ShaderStageFlags,
+	flags:            Maybe(vk.DescriptorBindingFlags),
 }
 
 Pipeline_Resource :: union {
@@ -138,25 +141,46 @@ Pipeline_Resource :: union {
 	Buffer,
 }
 
+Shader_Stage_Flags :: distinct bit_set[Shader_Stage_Flag]
+Shader_Stage_Flag :: enum {
+	Vertex,
+	Geometry,
+	Fragment,
+	Compute,
+}
+
 Pipeline_Stage_Info :: struct {
-	stage:       vk.ShaderStageFlags,
+	stage:       Shader_Stage_Flag,
 	shader_path: string,
 }
 
+MAX_COLOR_ATTACHMENTS :: 4
+MAX_PIPELINE_SET_INFOS :: 4
+MAX_PIPELINE_STAGES_INFOS :: 8
+MAX_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION :: 16
+MAX_BINDING_INFOS :: 128
+Set_Infos :: sm.Small_Array(MAX_PIPELINE_SET_INFOS, Pipeline_Set_Info)
+Descriptor_Set_Layouts :: sm.Small_Array(MAX_PIPELINE_SET_INFOS, vk.DescriptorSetLayout)
+Stage_Infos :: sm.Small_Array(MAX_PIPELINE_STAGES_INFOS, Pipeline_Stage_Info)
+Pipeline_Shader_Stage_Create_Infos :: sm.Small_Array(MAX_PIPELINE_STAGES_INFOS, vk.PipelineShaderStageCreateInfo)
+Vertex_Input_Attribute_Descriptions :: sm.Small_Array(
+	MAX_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION,
+	Vertex_Input_Attribute_Description,
+)
+Binding_Infos :: sm.Small_Array(MAX_BINDING_INFOS, Pipeline_Set_Binding_Info)
+
 Pipeline_Set_Info :: struct {
-	set:           u32,
-	binding_infos: []Pipeline_Set_Binding_Info,
-	flags:         []vk.DescriptorBindingFlags,
+	binding_infos: Binding_Infos,
 }
 
 Create_Pipeline_Info :: struct {
-	set_infos:                []Pipeline_Set_Info,
-	push_constants:           []Push_Constant_Range,
-	stage_infos:              []Pipeline_Stage_Info,
+	set_infos:                Set_Infos,
+	bindless:                 bool,
+	stage_infos:              Stage_Infos,
 	vertex_input_description: struct {
 		input_rate:             vk.VertexInputRate,
 		binding_description:    Vertex_Input_Binding_Description,
-		attribute_descriptions: []Vertex_Input_Attribute_Description,
+		attribute_descriptions: Vertex_Input_Attribute_Descriptions,
 	},
 	input_assembly:           struct {
 		topology: vk.PrimitiveTopology,
@@ -167,9 +191,11 @@ Create_Pipeline_Info :: struct {
 		cull_mode:    vk.CullModeFlags,
 		front_face:   vk.FrontFace,
 	},
-	multisampling:            struct {
-		sample_count:       Sample_Count_Flag,
-		min_sample_shading: f32,
+	attachment:               struct {
+		sample_count:             Sample_Count_Flags,
+		depth_format:             vk.Format,
+		color_attachment_formats: u32,
+		color_attachment_count:   u32,
 	},
 	depth:                    struct {
 		enable:             b32,
@@ -187,29 +213,30 @@ Create_Pipeline_Info :: struct {
 }
 
 Create_Compute_Pipeline_Info :: struct {
-	set_infos:   []Pipeline_Set_Info,
+	set_infos:   Set_Infos,
 	shader_path: string,
 }
 
 Pipeline :: struct {
 	pipeline:               vk.Pipeline,
 	layout:                 vk.PipelineLayout,
-	descriptor_set_layouts: []vk.DescriptorSetLayout,
+	descriptor_set_layouts: Descriptor_Set_Layouts,
+}
+
+
+Render_Pipeline :: struct {
+	cache:       map[Surface_Info]Graphics_Pipeline,
+	create_info: Create_Pipeline_Info,
 }
 
 Graphics_Pipeline :: struct {
-	using base:  Pipeline,
-	create_info: ^Create_Pipeline_Info,
+	using base:   Pipeline,
+	surface_info: Surface_Info,
 }
 
 Compute_Pipeline :: struct {
 	using base:  Pipeline,
 	create_info: ^Create_Compute_Pipeline_Info,
-}
-
-Pipeline_Ptr :: union {
-	^Graphics_Pipeline,
-	^Compute_Pipeline,
 }
 
 Push_Constant :: struct {
@@ -220,9 +247,10 @@ Push_Constant :: struct {
 }
 
 Pipeline_Handle :: distinct hm.Handle
+Render_Pipeline_Handle :: distinct hm.Handle
 
 Pipeline_Manager :: struct {
-	pipelines:          hm.Handle_Map(Graphics_Pipeline, Pipeline_Handle),
+	render_pipelines:   hm.Handle_Map(Render_Pipeline, Render_Pipeline_Handle),
 	compute_pipelines:  hm.Handle_Map(Compute_Pipeline, Pipeline_Handle),
 	compiler:           shaderc.compilerT,
 	compiler_options:   shaderc.compileOptionsT,
@@ -284,7 +312,7 @@ Camera :: struct {
 
 
 Material :: struct {
-	pipeline_h: Pipeline_Handle,
+	pipeline_h: Render_Pipeline_Handle,
 	buffer_h:   Buffer_Handle,
 	dirty:      bool,
 	apply:      proc(data: ^Material, loc := #caller_location),
@@ -294,24 +322,8 @@ Material :: struct {
 
 @(material)
 Base_Material :: struct {
-	color:     vec4,
-	texture_h: Texture_Handle,
-}
-
-Base_Material_UBO :: struct {
 	color:   vec4,
-	texture: u32,
-	pad0:    u32,
-	pad1:    u32,
-	pad2:    u32,
-}
-
-Some_Material :: struct {
-	color:   vec4,
-	texture: u32,
-	test:    u32,
-	test2:   u32,
-	test3:   u32,
+	texture: Texture_Handle,
 }
 
 Gfx_Transform :: struct {
@@ -422,8 +434,10 @@ Surface_Info_Type :: enum {
 }
 
 Surface_Info :: struct {
-	type:         Surface_Info_Type,
-	sample_count: Sample_Count_Flag,
+	type:          Surface_Info_Type,
+	sample_count:  Sample_Count_Flag,
+	depth_format:  vk.Format,
+	color_formats: sm.Small_Array(MAX_COLOR_ATTACHMENTS, vk.Format),
 }
 
 Frame_Data :: struct {

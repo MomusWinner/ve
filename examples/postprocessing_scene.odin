@@ -19,7 +19,7 @@ Postprocessing_Scene_Data :: struct {
 	model:          gfx.Model,
 	model_material: gfx.Material,
 	texture_h:      gfx.Texture_Handle,
-	pipeline_h:     gfx.Pipeline_Handle,
+	pipeline_h:     gfx.Render_Pipeline_Handle,
 	transform:      gfx.Gfx_Transform,
 	camera:         gfx.Camera,
 	surface_h:      gfx.Surface_Handle,
@@ -53,7 +53,7 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 
 	// Setup Material
 	gfx.init_mtrl_base(&data.model_material, data.pipeline_h)
-	gfx.mtrl_base_set_texture_h(&data.model_material, data.texture_h)
+	gfx.mtrl_base_set_texture(&data.model_material, data.texture_h)
 	append(&data.model.materials, data.model_material)
 	append(&data.model.mesh_material, 0)
 
@@ -64,7 +64,7 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 	eldr.trf_set_scale(&data.transform, 1)
 
 	postprocessing_pipeline_h := create_postprocessing_pipeline()
-	pipe, ok_p_ := gfx.get_graphics_pipeline(postprocessing_pipeline_h)
+	pipe, ok_p_ := gfx.get_render_pipeline(postprocessing_pipeline_h)
 	assert(ok_p_, "Fuck")
 
 	// Setup Postprocessing Surface
@@ -86,7 +86,7 @@ postprocessing_scene_update :: proc(s: ^Scene) {
 postprocessing_scene_draw :: proc(s: ^Scene) {
 	data := cast(^Postprocessing_Scene_Data)s.data
 
-	pipeline, p_ok := gfx.get_graphics_pipeline(data.pipeline_h)
+	pipeline, p_ok := gfx.get_render_pipeline(data.pipeline_h)
 	assert(p_ok)
 
 	frame := gfx.begin_render()
@@ -110,7 +110,6 @@ postprocessing_scene_draw :: proc(s: ^Scene) {
 	base_frame := gfx.begin_draw(frame)
 	{
 		gfx.draw_surface(surface, &data.camera, base_frame, &data.postproc_mtrl)
-		gfx.draw_model(surface_frame, data.model, &data.camera, &data.transform)
 	}
 	gfx.end_draw(base_frame)
 

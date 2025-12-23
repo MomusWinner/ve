@@ -63,16 +63,6 @@ RegisterUniform(Model, {
 
 #define getModel() GetResource(Model, PushConstants.model)
 
-RegisterUniform(Material, {
-	vec4 color;
-	uint texture;
-	// uint pad0; // TODO:
-	// uint pad1;
-	// uint pad2;
-});
-
-#define getMaterial() GetResource(Material, PushConstants.material)
-
 RegisterUniform(Camera, {
     mat4 view;
     mat4 projection;
