@@ -237,7 +237,6 @@ begin_draw :: proc(frame: Frame_Data, clear_color: vec4 = {0.0, 0.0, 0.0, 1.0}) 
 
 	frame := frame
 
-
 	frame.surface_info = Surface_Info {
 		type         = .Swapchain,
 		sample_count = ctx.swapchain.sample_count,

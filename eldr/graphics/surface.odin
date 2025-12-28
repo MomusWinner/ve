@@ -44,35 +44,56 @@ surface_add_color_attachment :: proc(
 
 	width, height := get_screen_width(), get_screen_height()
 
-	color_resource := _create_surface_color_resource(width, height, ctx.swapchain.format.format, surface.sample_count)
-	color_resolve_resource := _create_surface_color_resolve_resource(
-		width,
-		height,
-		surface.anisotropy,
-		ctx.swapchain.format.format,
-	)
+	color_attachment := Surface_Color_Attachment{}
+	if surface.sample_count == ._1 {
+		color_res := _create_surface_color_resolve_resource(
+			width,
+			height,
+			surface.anisotropy,
+			ctx.swapchain.format.format,
+		)
 
-	color_attachment := Surface_Color_Attachment {
-		info = {
+		color_attachment.texture_h = bindless_store_texture(color_res, loc)
+
+		color_attachment.info = {
 			sType = .RENDERING_ATTACHMENT_INFO,
 			pNext = nil,
-			imageView = color_resource.view,
+			imageView = color_res.view,
+			imageLayout = .ATTACHMENT_OPTIMAL,
+			resolveMode = {},
+			loadOp = .CLEAR,
+			storeOp = .STORE,
+			clearValue = vk.ClearValue{color = {float32 = clear_value}},
+		}
+	} else {
+		msaa := _create_surface_color_resource(width, height, ctx.swapchain.format.format, surface.sample_count)
+		resolve := _create_surface_color_resolve_resource(
+			width,
+			height,
+			surface.anisotropy,
+			ctx.swapchain.format.format,
+		)
+
+		color_attachment.texture_h = bindless_store_texture(resolve)
+		color_attachment.msaa_texture = msaa
+
+		color_attachment.info = {
+			sType = .RENDERING_ATTACHMENT_INFO,
+			pNext = nil,
+			imageView = msaa.view,
 			imageLayout = .ATTACHMENT_OPTIMAL,
 			resolveMode = {.AVERAGE_KHR},
-			resolveImageView = color_resolve_resource.view,
+			resolveImageView = resolve.view,
 			resolveImageLayout = .GENERAL,
 			loadOp = .CLEAR,
 			storeOp = .STORE,
 			clearValue = vk.ClearValue{color = {float32 = clear_value}},
-		},
+		}
 	}
+
 	surface.color_attachment = color_attachment
 
-	color_attachment.resource = color_resource
-	color_attachment.resolve_handle = bindless_store_texture(color_resolve_resource)
-	surface.color_attachment = color_attachment
-
-	return color_attachment.resolve_handle
+	return color_attachment.texture_h
 }
 
 surface_add_depth_attachment :: proc(surface: ^Surface, clear_value: f32 = 1, loc := #caller_location) {
@@ -116,15 +137,23 @@ begin_surface :: proc(surface: ^Surface, frame_data: Frame_Data, loc := #caller_
 	p_depth_attachment: ^vk.RenderingAttachmentInfo = nil
 
 	if has_color_attachment {
-		_transition_image_layout(
-			cmd,
-			color_attachment.resource.image,
-			{.COLOR},
-			color_attachment.resource.format,
-			.UNDEFINED,
-			.COLOR_ATTACHMENT_OPTIMAL,
-			1,
-		)
+		msaa, has_msaa := color_attachment.msaa_texture.?
+
+		if has_msaa {
+			_transition_image_layout(cmd, msaa.image, {.COLOR}, msaa.format, .UNDEFINED, .COLOR_ATTACHMENT_OPTIMAL, 1)
+		} else {
+			texture, ok := bindless_get_texture(color_attachment.texture_h, loc)
+			assert(ok)
+			_transition_image_layout(
+				cmd,
+				texture.image,
+				{.COLOR},
+				texture.format,
+				.UNDEFINED,
+				.COLOR_ATTACHMENT_OPTIMAL,
+				1,
+			)
+		}
 
 		p_color_attachment = &color_attachment.info
 	}
@@ -151,7 +180,9 @@ begin_surface :: proc(surface: ^Surface, frame_data: Frame_Data, loc := #caller_
 		depth_format = depth_attachment.resource.format if has_depth_attachment else .UNDEFINED,
 	}
 	if (has_color_attachment) {
-		sm.push(&frame_data.surface_info.color_formats, color_attachment.resource.format)
+		texture, ok := bindless_get_texture(color_attachment.texture_h)
+		assert(ok)
+		sm.push(&frame_data.surface_info.color_formats, texture.format)
 	}
 
 	return frame_data
@@ -165,19 +196,35 @@ end_surface :: proc(surface: ^Surface, frame_data: Frame_Data, loc := #caller_lo
 	color_attachment, has_color_attachment := surface.color_attachment.?
 
 	if has_color_attachment {
-		_transition_image_layout(
-			frame_data.cmd,
-			color_attachment.resource.image,
-			{.COLOR},
-			color_attachment.resource.format,
-			.COLOR_ATTACHMENT_OPTIMAL,
-			.SHADER_READ_ONLY_OPTIMAL,
-			1,
-		)
+		msaa, has_msaa := color_attachment.msaa_texture.?
+
+		if has_msaa {
+			_transition_image_layout(
+				frame_data.cmd,
+				msaa.image,
+				{.COLOR},
+				msaa.format,
+				.COLOR_ATTACHMENT_OPTIMAL,
+				.SHADER_READ_ONLY_OPTIMAL,
+				1,
+			)
+		} else {
+			texture, ok := bindless_get_texture(color_attachment.texture_h, loc)
+			assert(ok)
+			_transition_image_layout(
+				frame_data.cmd,
+				texture.image,
+				{.COLOR},
+				texture.format,
+				.COLOR_ATTACHMENT_OPTIMAL,
+				.SHADER_READ_ONLY_OPTIMAL,
+				1,
+			)
+		}
 	}
 }
 
-draw_surface :: proc(
+draw_surface_on_unit_square :: proc(
 	surface: ^Surface,
 	camera: ^Camera,
 	frame_data: Frame_Data,
@@ -190,7 +237,24 @@ draw_surface :: proc(
 	color_attachment, has_color := surface.color_attachment.?
 	assert(has_color, loc = loc)
 
-	draw_mesh(frame_data, &surface.mesh, material, camera, &surface.transform, loc)
+	draw_mesh(frame_data, &ctx.buildin.unit_square, material, camera, &surface.transform, {}, true, loc)
+}
+
+draw_surface :: proc(
+	surface: ^Surface,
+	camera: ^Camera,
+	frame_data: Frame_Data,
+	material: ^Material,
+	mesh: ^Mesh,
+	loc := #caller_location,
+) {
+	assert_gfx_ctx(loc)
+	assert_not_nil(surface, loc)
+
+	color_attachment, has_color := surface.color_attachment.?
+	assert(has_color, loc = loc)
+
+	draw_mesh(frame_data, mesh, material, camera, &surface.transform, {}, true, loc)
 }
 
 _init_surface_manager :: proc() {
@@ -293,8 +357,6 @@ _surface_init :: proc(
 		height = get_device_height(),
 	}
 
-	surface.mesh = create_square_mesh(1)
-
 	init_gfx_trf(&surface.transform)
 
 	surface.sample_count = sample_count
@@ -306,12 +368,15 @@ _surface_destroy :: proc(surface: ^Surface, loc := #caller_location) {
 	assert_gfx_ctx(loc)
 	assert_not_nil(surface, loc)
 
-	destroy_mesh(&surface.mesh)
 	color_attachment, has_color_attachment := surface.color_attachment.?
 	depth_attachment, has_depth_attachment := surface.depth_attachment.?
 
 	if has_color_attachment {
-		destroy_texture(&color_attachment.resource)
+		bindless_destroy_texture(color_attachment.texture_h)
+		msaa, has_msaa := color_attachment.msaa_texture.?
+		if has_msaa {
+			destroy_texture(&msaa)
+		}
 	}
 
 	if has_depth_attachment {
@@ -360,6 +425,11 @@ _create_surface_color_resource :: proc(
 	)
 
 	view := _create_image_view(image, format, {.COLOR}, 1)
+
+	when ENABLE_VALIDATION_LAYERS {
+		set_debug_object_name(cast(u64)image, .IMAGE, "surface msaa image")
+		set_debug_object_name(cast(u64)view, .IMAGE_VIEW, "surface msaa view")
+	}
 
 	return Texture {
 		name = "surface color attachment",
@@ -415,6 +485,12 @@ _create_surface_color_resolve_resource :: proc(
 	sampler: vk.Sampler
 	must(vk.CreateSampler(ctx.vulkan_state.device, &sampler_info, nil, &sampler))
 
+	when ENABLE_VALIDATION_LAYERS {
+		set_debug_object_name(cast(u64)image, .IMAGE, "surface resolve image")
+		set_debug_object_name(cast(u64)sampler, .SAMPLER, "surface resolve sampler")
+		set_debug_object_name(cast(u64)view, .IMAGE_VIEW, "surface resolve view")
+	}
+
 	return Texture {
 		name = "surface resolve color attachment",
 		image = image,
@@ -466,24 +542,22 @@ _surface_resize_color_attachment :: proc(width: u32, height: u32, surface: ^Surf
 	assert_gfx_ctx(loc)
 	assert_not_nil(surface, loc)
 
-	old_color_attachment, has_color_attachment := surface.color_attachment.?
+	color_attachment, has_color_attachment := surface.color_attachment.?
 	assert(has_color_attachment)
 
-	destroy_texture(&old_color_attachment.resource)
-	color_resource := _create_surface_color_resource(width, height, ctx.swapchain.format.format, surface.sample_count)
-	color_resolve_resource := _create_surface_color_resolve_resource(
-		width,
-		height,
-		surface.anisotropy,
-		ctx.swapchain.format.format,
-	)
+	msaa, has_msaa := color_attachment.msaa_texture.?
 
-	color_attachment := old_color_attachment
-	color_attachment.info.imageView = color_resource.view
-	color_attachment.info.resolveImageView = color_resolve_resource.view
-	color_attachment.resource = color_resource
-	color_attachment.resolve_handle = old_color_attachment.resolve_handle
-	bindless_update_texture(color_attachment.resolve_handle, color_resolve_resource)
+	resolve := _create_surface_color_resolve_resource(width, height, surface.anisotropy, ctx.swapchain.format.format)
+	bindless_update_texture(color_attachment.texture_h, resolve)
+	color_attachment.info.imageView = resolve.view
+
+	if has_msaa {
+		destroy_texture(&msaa)
+		new_msaa := _create_surface_color_resource(width, height, ctx.swapchain.format.format, surface.sample_count)
+		color_attachment.msaa_texture = new_msaa
+		color_attachment.info.imageView = new_msaa.view
+		color_attachment.info.resolveImageView = resolve.view
+	}
 
 	surface.color_attachment = color_attachment
 }

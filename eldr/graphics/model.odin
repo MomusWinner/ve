@@ -1,5 +1,6 @@
 package graphics
 
+import sm "core:container/small_array"
 import "core:log"
 import vk "vendor:vulkan"
 
@@ -44,6 +45,8 @@ draw_mesh :: proc(
 	material: ^Material,
 	camera: ^Camera,
 	transform: ^Gfx_Transform,
+	descriptor_sets: []Descriptor_Set = {},
+	bindless := true, // FIX:
 	loc := #caller_location,
 ) {
 	assert_gfx_ctx(loc)
@@ -68,7 +71,14 @@ draw_mesh :: proc(
 
 	g_pipeline := cmd_bind_render_pipeline(frame_data, pipeline, loc)
 
-	cmd_bind_descriptor_set_graphics(frame_data, &g_pipeline, get_descriptor_set_bindless())
+	if (bindless) {
+		s := sm.Small_Array(MAX_PIPELINE_SET_COUNT, Descriptor_Set){}
+		sm.push(&s, get_descriptor_set_bindless())
+		sm.push(&s, ..descriptor_sets)
+		cmd_bind_descriptor_set_graphics(frame_data, &g_pipeline, ..sm.slice(&s))
+	} else {
+		cmd_bind_descriptor_set_graphics(frame_data, &g_pipeline, ..descriptor_sets)
+	}
 
 	const := Push_Constant {
 		camera   = _camera_get_buffer(camera, get_screen_aspect()).index,
@@ -107,6 +117,8 @@ draw_model :: proc(
 	model: Model,
 	camera: ^Camera,
 	transform: ^Gfx_Transform,
+	bindless: bool = true,
+	descriptor_sets: []Descriptor_Set = {},
 	loc := #caller_location,
 ) {
 	assert_gfx_ctx(loc)
@@ -114,6 +126,15 @@ draw_model :: proc(
 
 	for &mesh, i in model.meshes {
 		material_index := model.mesh_material[i]
-		draw_mesh(frame_data, &mesh, &model.materials[material_index], camera, transform, loc)
+		draw_mesh(
+			frame_data,
+			&mesh,
+			&model.materials[material_index],
+			camera,
+			transform,
+			descriptor_sets,
+			bindless,
+			loc,
+		)
 	}
 }

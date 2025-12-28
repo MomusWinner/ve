@@ -14,7 +14,7 @@ create_render_pipeline :: proc(
 	create_pipeline_info: Create_Pipeline_Info,
 	loc := #caller_location,
 ) -> Render_Pipeline_Handle {
-	return _pipeline_manager_registe_render_pipeline(
+	return _pipeline_manager_add_render_pipeline(
 		ctx.pipeline_manager,
 		Render_Pipeline{create_info = create_pipeline_info},
 	)
@@ -79,6 +79,8 @@ _reload_graphics_pipeline :: proc(pipeline: ^Graphics_Pipeline, create_info: Cre
 
 	depth_format := _find_depth_format(ctx.vulkan_state.physical_device)
 
+	pipeline_layout := get_pipeline_layout(pipeline.layout)
+
 	pipeline_rendering_info := vk.PipelineRenderingCreateInfo {
 		sType                   = .PIPELINE_RENDERING_CREATE_INFO,
 		// stencilAttachmentFormat = surface_info.depthAttachmentFormat,
@@ -121,7 +123,7 @@ _reload_graphics_pipeline :: proc(pipeline: ^Graphics_Pipeline, create_info: Cre
 		pColorBlendState    = &color_blend_sate,
 		pDynamicState       = &dynamic_state,
 		pDepthStencilState  = &depth_stancil,
-		layout              = pipeline.layout,
+		layout              = pipeline_layout,
 		subpass             = 0,
 		basePipelineIndex   = -1,
 	}
@@ -132,10 +134,10 @@ _reload_graphics_pipeline :: proc(pipeline: ^Graphics_Pipeline, create_info: Cre
 @(private)
 _create_descriptor_pool :: proc() {
 	pool_sizes := [?]vk.DescriptorPoolSize {
-		vk.DescriptorPoolSize{type = .UNIFORM_BUFFER, descriptorCount = UNIFORM_DESCRIPTOR_MAX},
-		vk.DescriptorPoolSize{type = .UNIFORM_BUFFER_DYNAMIC, descriptorCount = UNIFORM_DESCRIPTOR_DYNAMIC_MAX},
-		vk.DescriptorPoolSize{type = .COMBINED_IMAGE_SAMPLER, descriptorCount = IMAGE_SAMPLER_DESCRIPTOR_MAX},
-		vk.DescriptorPoolSize{type = .STORAGE_BUFFER, descriptorCount = STORAGE_DESCRIPTOR_MAX},
+		vk.DescriptorPoolSize{type = .UNIFORM_BUFFER, descriptorCount = MAX_DESCRIPTOR_UNIFORM_COUNT},
+		vk.DescriptorPoolSize{type = .UNIFORM_BUFFER_DYNAMIC, descriptorCount = MAX_DESCRIPTOR_UNIFORM_DYNAMIC_COUNT},
+		vk.DescriptorPoolSize{type = .COMBINED_IMAGE_SAMPLER, descriptorCount = MAX_DESCRIPTOR_IMAGE_SAMPLER_COUNT},
+		vk.DescriptorPoolSize{type = .STORAGE_BUFFER, descriptorCount = MAX_DESCRIPTOR_STORAGE_COUNT},
 	}
 
 	poolInfo := vk.DescriptorPoolCreateInfo {
@@ -143,7 +145,7 @@ _create_descriptor_pool :: proc() {
 		flags         = {.UPDATE_AFTER_BIND},
 		poolSizeCount = len(pool_sizes),
 		pPoolSizes    = raw_data(&pool_sizes),
-		maxSets       = DESCRIPTOR_SET_MAX,
+		maxSets       = MAX_DESCRIPTOR_SET_COUNT,
 	}
 
 	must(
@@ -158,81 +160,81 @@ _destroy_descriptor_pool :: proc() {
 }
 
 // TODO: need modification
-@(private)
-@(require_results)
-create_descriptor_set :: proc(
-	pipeline: ^Pipeline,
-	set: u32,
-	set_info: Pipeline_Set_Info,
-	resources: []Pipeline_Resource,
-) -> vk.DescriptorSet {
-	descripotr_set_layout := pipeline.descriptor_set_layouts.data[set]
-
-	alloc_info := vk.DescriptorSetAllocateInfo {
-		sType              = .DESCRIPTOR_SET_ALLOCATE_INFO,
-		descriptorPool     = ctx.vulkan_state.descriptor_pool,
-		descriptorSetCount = 1,
-		pSetLayouts        = &pipeline.descriptor_set_layouts.data[set],
-	}
-
-	descriptor_set: vk.DescriptorSet
-	must(
-		vk.AllocateDescriptorSets(ctx.vulkan_state.device, &alloc_info, &descriptor_set),
-		"failed to allocate descriptor sets!",
-	)
-
-	assert(set_info.binding_infos.len == len(resources))
-
-	write_descriptor_sets := make([]vk.WriteDescriptorSet, len(resources), context.temp_allocator)
-	descriptor_image_info := vk.DescriptorImageInfo{}
-	descriptor_buffer_info := vk.DescriptorBufferInfo{}
-
-	for i in 0 ..< set_info.binding_infos.len {
-		binding := set_info.binding_infos.data[i]
-		resource := resources[i]
-
-		switch r in resource {
-		case Texture:
-			descriptor_image_info.imageLayout = .SHADER_READ_ONLY_OPTIMAL
-			descriptor_image_info.imageView = r.view
-			descriptor_image_info.sampler = r.sampler
-
-			write_descriptor_sets[i] = vk.WriteDescriptorSet {
-				sType           = .WRITE_DESCRIPTOR_SET,
-				dstSet          = descriptor_set,
-				dstBinding      = binding.binding,
-				descriptorType  = binding.descriptor_type,
-				dstArrayElement = 0,
-				descriptorCount = binding.descriptor_count,
-				pImageInfo      = &descriptor_image_info,
-			}
-		case Buffer:
-			descriptor_buffer_info.buffer = r.buffer
-			descriptor_buffer_info.offset = 0
-			descriptor_buffer_info.range = cast(vk.DeviceSize)vk.WHOLE_SIZE
-
-			write_descriptor_sets[i] = vk.WriteDescriptorSet {
-				sType           = .WRITE_DESCRIPTOR_SET,
-				dstSet          = descriptor_set,
-				dstBinding      = binding.binding,
-				descriptorType  = binding.descriptor_type,
-				dstArrayElement = 0,
-				descriptorCount = binding.descriptor_count,
-				pBufferInfo     = &descriptor_buffer_info,
-			}
-		}
-	}
-
-	vk.UpdateDescriptorSets(
-		ctx.vulkan_state.device,
-		cast(u32)len(write_descriptor_sets),
-		raw_data(write_descriptor_sets),
-		0,
-		nil,
-	)
-
-	return descriptor_set
-}
+// @(private)
+// @(require_results)
+// create_descriptor_set :: proc(
+// 	pipeline: ^Pipeline,
+// 	set: u32,
+// 	set_info: Pipeline_Layout_Set_Info,
+// 	resources: []Pipeline_Resource,
+// ) -> vk.DescriptorSet {
+// 	descripotr_set_layout := pipeline.descriptor_set_layouts.data[set]
+//
+// 	alloc_info := vk.DescriptorSetAllocateInfo {
+// 		sType              = .DESCRIPTOR_SET_ALLOCATE_INFO,
+// 		descriptorPool     = ctx.vulkan_state.descriptor_pool,
+// 		descriptorSetCount = 1,
+// 		pSetLayouts        = &pipeline.descriptor_set_layouts.data[set],
+// 	}
+//
+// 	descriptor_set: vk.DescriptorSet
+// 	must(
+// 		vk.AllocateDescriptorSets(ctx.vulkan_state.device, &alloc_info, &descriptor_set),
+// 		"failed to allocate descriptor sets!",
+// 	)
+//
+// 	assert(set_info.binding_infos.len == len(resources))
+//
+// 	write_descriptor_sets := make([]vk.WriteDescriptorSet, len(resources), context.temp_allocator)
+// 	descriptor_image_info := vk.DescriptorImageInfo{}
+// 	descriptor_buffer_info := vk.DescriptorBufferInfo{}
+//
+// 	for i in 0 ..< set_info.binding_infos.len {
+// 		binding := set_info.binding_infos.data[i]
+// 		resource := resources[i]
+//
+// 		switch r in resource {
+// 		case Texture:
+// 			descriptor_image_info.imageLayout = .SHADER_READ_ONLY_OPTIMAL
+// 			descriptor_image_info.imageView = r.view
+// 			descriptor_image_info.sampler = r.sampler
+//
+// 			write_descriptor_sets[i] = vk.WriteDescriptorSet {
+// 				sType           = .WRITE_DESCRIPTOR_SET,
+// 				dstSet          = descriptor_set,
+// 				dstBinding      = binding.binding,
+// 				descriptorType  = binding.descriptor_type,
+// 				dstArrayElement = 0,
+// 				descriptorCount = binding.descriptor_count,
+// 				pImageInfo      = &descriptor_image_info,
+// 			}
+// 		case Buffer:
+// 			descriptor_buffer_info.buffer = r.buffer
+// 			descriptor_buffer_info.offset = 0
+// 			descriptor_buffer_info.range = cast(vk.DeviceSize)vk.WHOLE_SIZE
+//
+// 			write_descriptor_sets[i] = vk.WriteDescriptorSet {
+// 				sType           = .WRITE_DESCRIPTOR_SET,
+// 				dstSet          = descriptor_set,
+// 				dstBinding      = binding.binding,
+// 				descriptorType  = binding.descriptor_type,
+// 				dstArrayElement = 0,
+// 				descriptorCount = binding.descriptor_count,
+// 				pBufferInfo     = &descriptor_buffer_info,
+// 			}
+// 		}
+// 	}
+//
+// 	vk.UpdateDescriptorSets(
+// 		ctx.vulkan_state.device,
+// 		cast(u32)len(write_descriptor_sets),
+// 		raw_data(write_descriptor_sets),
+// 		0,
+// 		nil,
+// 	)
+//
+// 	return descriptor_set
+// }
 
 @(private = "file")
 @(require_results)
@@ -249,19 +251,20 @@ _create_graphics_pipeline :: proc(
 	shader_stages := _create_shader_stages(create_info, DEBUG, loc = loc)
 	defer _destroy_shader_stages(shader_stages)
 
-	descriptor_set_layouts := _set_infos_to_descriptor_set_layouts(create_info.set_infos)
 
-	push_constant: Maybe(Push_Constant_Range)
+	pipelie_layout_info := Pipeline_Layout_Info {
+		layout_infos = create_info.set_infos,
+	}
 
 	if create_info.bindless {
-		push_constant = Push_Constant_Range {
+		pipelie_layout_info.push_constant = Push_Constant_Range {
 			offset     = 0,
 			size       = size_of(Push_Constant),
 			stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS,
 		}
 	}
 
-	pipeline_layout := _create_pipeline_layout(descriptor_set_layouts, push_constant)
+	pipeline_layout := get_pipeline_layout(pipelie_layout_info)
 
 	pipeline_rendering_info := vk.PipelineRenderingCreateInfo {
 		sType                   = .PIPELINE_RENDERING_CREATE_INFO,
@@ -315,10 +318,9 @@ _create_graphics_pipeline :: proc(
 	must(vk.CreateGraphicsPipelines(ctx.vulkan_state.device, 0, 1, &pipeline_info, nil, &vk_pipeline))
 
 	pipeline := Graphics_Pipeline {
-		pipeline               = vk_pipeline,
-		layout                 = pipeline_layout,
-		descriptor_set_layouts = descriptor_set_layouts,
-		surface_info           = surface_info,
+		pipeline     = vk_pipeline,
+		layout       = pipelie_layout_info,
+		surface_info = surface_info,
 	}
 
 	return pipeline
@@ -354,14 +356,17 @@ _create_compute_pipeline :: proc(
 		pName  = "main",
 	}
 
-	descriptor_set_layouts := _set_infos_to_descriptor_set_layouts(create_info.set_infos)
-
-	push_constant := Push_Constant_Range {
-		offset     = 0,
-		size       = size_of(Push_Constant),
-		stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS,
+	pipelie_layout_info := Pipeline_Layout_Info {
+		layout_infos = create_info.set_infos,
+		push_constant = Push_Constant_Range {
+			offset = 0,
+			size = size_of(Push_Constant),
+			stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS,
+		},
 	}
-	pipeline_layout := _create_pipeline_layout(descriptor_set_layouts, push_constant)
+
+	pipeline_layout := get_pipeline_layout(pipelie_layout_info)
+
 
 	vk_create_info := vk.ComputePipelineCreateInfo {
 		sType  = .COMPUTE_PIPELINE_CREATE_INFO,
@@ -374,10 +379,9 @@ _create_compute_pipeline :: proc(
 	vk.CreateComputePipelines(g.vulkan_state.device, vk.FALSE, 1, &vk_create_info, nil, &pipeline)
 
 	compute_pipeline := Compute_Pipeline {
-		pipeline               = pipeline,
-		create_info            = create_info,
-		layout                 = pipeline_layout,
-		descriptor_set_layouts = descriptor_set_layouts,
+		pipeline    = pipeline,
+		create_info = create_info,
+		layout      = pipelie_layout_info,
 	}
 
 	return compute_pipeline, true
@@ -385,88 +389,87 @@ _create_compute_pipeline :: proc(
 
 @(private = "file")
 _destroy_pipline :: proc(pipeline: ^Pipeline) {
-	vk.DestroyPipelineLayout(ctx.vulkan_state.device, pipeline.layout, nil)
 	vk.DestroyPipeline(ctx.vulkan_state.device, pipeline.pipeline, nil)
-
-	for i in 0 ..< pipeline.descriptor_set_layouts.len {
-		_destroy_descriptor_set_layout(pipeline.descriptor_set_layouts.data[i])
-	}
 }
 
-@(private = "file")
-@(require_results)
-_set_infos_to_descriptor_set_layouts :: proc(set_infos: Set_Infos) -> (descriptor_set_layouts: Descriptor_Set_Layouts) {
-	for i in 0 ..< set_infos.len {
-		sm.push(&descriptor_set_layouts, _set_info_to_descriptor_set_layout(set_infos.data[i]))
-	}
+// @(private = "file")
+// @(require_results)
+// _set_infos_to_descriptor_set_layouts :: proc(
+// 	set_infos: Pipeline_Set_Infos,
+// ) -> (
+// 	descriptor_set_layouts: Descriptor_Set_Layouts,
+// ) {
+// 	for i in 0 ..< set_infos.len {
+// 		sm.push(&descriptor_set_layouts, _set_info_to_descriptor_set_layout(set_infos.data[i]))
+// 	}
+//
+// 	return descriptor_set_layouts
+// }
+//
+// @(private = "file")
+// @(require_results)
+// _set_info_to_descriptor_set_layout :: proc(set_info: Pipeline_Set_Info) -> vk.DescriptorSetLayout {
+// 	descriptor_bindings: sm.Small_Array(MAX_PIPELINE_BINDING_COUNT, vk.DescriptorSetLayoutBinding)
+// 	flags_array: sm.Small_Array(MAX_PIPELINE_BINDING_COUNT, vk.DescriptorBindingFlags)
+//
+// 	use_binding_flags := false
+//
+// 	for i in 0 ..< set_info.binding_infos.len {
+// 		binding := set_info.binding_infos.data[i]
+// 		sm.push(
+// 			&descriptor_bindings,
+// 			vk.DescriptorSetLayoutBinding {
+// 				binding = binding.binding,
+// 				descriptorType = binding.descriptor_type,
+// 				descriptorCount = binding.descriptor_count,
+// 				stageFlags = binding.stage_flags,
+// 				pImmutableSamplers = nil,
+// 			},
+// 		)
+//
+// 		flags, has_flags := binding.flags.?
+// 		if has_flags {
+// 			use_binding_flags = true
+// 			sm.push(&flags_array, flags)
+// 		} else {
+// 			sm.push(&flags_array, vk.DescriptorBindingFlags{})
+// 		}
+// 	}
+//
+// 	p_binding_flags: ^vk.DescriptorSetLayoutBindingFlagsCreateInfo = nil
+//
+// 	if use_binding_flags {
+// 		binding_flags := vk.DescriptorSetLayoutBindingFlagsCreateInfo {
+// 			sType         = .DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+// 			pNext         = nil,
+// 			pBindingFlags = raw_data(sm.slice(&flags_array)),
+// 			bindingCount  = cast(u32)flags_array.len,
+// 		}
+// 		p_binding_flags = &binding_flags
+// 	}
+//
+// 	descriptor_set_layout := vk.DescriptorSetLayout{}
+//
+// 	layout_info := vk.DescriptorSetLayoutCreateInfo {
+// 		sType        = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+// 		pNext        = p_binding_flags,
+// 		bindingCount = cast(u32)descriptor_bindings.len,
+// 		pBindings    = raw_data(sm.slice(&descriptor_bindings)),
+// 		flags        = {.UPDATE_AFTER_BIND_POOL},
+// 	}
+//
+// 	must(
+// 		vk.CreateDescriptorSetLayout(ctx.vulkan_state.device, &layout_info, nil, &descriptor_set_layout),
+// 		"failed to create descriptor set layout!",
+// 	)
+//
+// 	return descriptor_set_layout
+// }
 
-	return descriptor_set_layouts
-}
-
-@(private = "file")
-@(require_results)
-_set_info_to_descriptor_set_layout :: proc(set_info: Pipeline_Set_Info) -> vk.DescriptorSetLayout {
-	descriptor_bindings: sm.Small_Array(MAX_BINDING_INFOS, vk.DescriptorSetLayoutBinding)
-	flags_array: sm.Small_Array(MAX_BINDING_INFOS, vk.DescriptorBindingFlags)
-
-	use_binding_flags := false
-
-	for i in 0 ..< set_info.binding_infos.len {
-		binding := set_info.binding_infos.data[i]
-		sm.push(
-			&descriptor_bindings,
-			vk.DescriptorSetLayoutBinding {
-				binding = binding.binding,
-				descriptorType = binding.descriptor_type,
-				descriptorCount = binding.descriptor_count,
-				stageFlags = binding.stage_flags,
-				pImmutableSamplers = nil,
-			},
-		)
-
-		flags, has_flags := binding.flags.?
-		if has_flags {
-			use_binding_flags = true
-			sm.push(&flags_array, flags)
-		} else {
-			sm.push(&flags_array, vk.DescriptorBindingFlags{})
-		}
-	}
-
-	p_binding_flags: ^vk.DescriptorSetLayoutBindingFlagsCreateInfo = nil
-
-	if use_binding_flags {
-		binding_flags := vk.DescriptorSetLayoutBindingFlagsCreateInfo {
-			sType         = .DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-			pNext         = nil,
-			pBindingFlags = raw_data(sm.slice(&flags_array)),
-			bindingCount  = cast(u32)flags_array.len,
-		}
-		p_binding_flags = &binding_flags
-	}
-
-	descriptor_set_layout := vk.DescriptorSetLayout{}
-
-	layout_info := vk.DescriptorSetLayoutCreateInfo {
-		sType        = .DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		pNext        = p_binding_flags,
-		bindingCount = cast(u32)descriptor_bindings.len,
-		pBindings    = raw_data(sm.slice(&descriptor_bindings)),
-		flags        = {.UPDATE_AFTER_BIND_POOL},
-	}
-
-	must(
-		vk.CreateDescriptorSetLayout(ctx.vulkan_state.device, &layout_info, nil, &descriptor_set_layout),
-		"failed to create descriptor set layout!",
-	)
-
-	return descriptor_set_layout
-}
-
-@(private = "file")
-_destroy_descriptor_set_layout :: proc(descriptor_set_layout: vk.DescriptorSetLayout) {
-	vk.DestroyDescriptorSetLayout(ctx.vulkan_state.device, descriptor_set_layout, nil)
-}
+// @(private = "file")
+// _destroy_descriptor_set_layout :: proc(descriptor_set_layout: vk.DescriptorSetLayout) {
+// 	vk.DestroyDescriptorSetLayout(ctx.vulkan_state.device, descriptor_set_layout, nil)
+// }
 
 @(private = "file")
 @(require_results)
@@ -674,28 +677,28 @@ _init_depth_stencil_info :: proc(info: ^vk.PipelineDepthStencilStateCreateInfo, 
 	info.back = create_info.stencil.back
 }
 
-@(private = "file")
-@(require_results)
-_create_pipeline_layout :: proc(
-	descriptor_set_layouts: Descriptor_Set_Layouts,
-	push_constant: Maybe(vk.PushConstantRange),
-) -> vk.PipelineLayout {
-	descriptor_set_layouts := descriptor_set_layouts
-	push, has_push := push_constant.?
-
-	pipeline_layout_info := vk.PipelineLayoutCreateInfo {
-		sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
-		setLayoutCount         = cast(u32)descriptor_set_layouts.len,
-		pSetLayouts            = raw_data(sm.slice(&descriptor_set_layouts)),
-		pushConstantRangeCount = 1 if has_push else 0,
-		pPushConstantRanges    = &push,
-	}
-
-	layout := vk.PipelineLayout{}
-	must(vk.CreatePipelineLayout(ctx.vulkan_state.device, &pipeline_layout_info, nil, &layout))
-
-	return layout
-}
+// @(private = "file")
+// @(require_results)
+// _create_pipeline_layout :: proc(
+// 	descriptor_set_layouts: Descriptor_Set_Layouts,
+// 	push_constant: Maybe(vk.PushConstantRange),
+// ) -> vk.PipelineLayout {
+// 	descriptor_set_layouts := descriptor_set_layouts
+// 	push, has_push := push_constant.?
+//
+// 	pipeline_layout_info := vk.PipelineLayoutCreateInfo {
+// 		sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
+// 		setLayoutCount         = cast(u32)descriptor_set_layouts.len,
+// 		pSetLayouts            = raw_data(sm.slice(&descriptor_set_layouts)),
+// 		pushConstantRangeCount = 1 if has_push else 0,
+// 		pPushConstantRanges    = &push,
+// 	}
+//
+// 	layout := vk.PipelineLayout{}
+// 	must(vk.CreatePipelineLayout(ctx.vulkan_state.device, &pipeline_layout_info, nil, &layout))
+//
+// 	return layout
+// }
 
 @(private = "file")
 @(require_results)

@@ -65,34 +65,34 @@ bindless_get_buffer :: proc(buffer_h: Buffer_Handle, loc := #caller_location) ->
 }
 
 @(require_results)
-create_bindless_pipeline_set_info :: proc() -> Pipeline_Set_Info {
-	binding_infos := Binding_Infos{}
+create_bindless_pipeline_set_info :: proc() -> Pipeline_Set_Layout_Info {
+	binding_infos := Pipeline_Set_Binding_Infos{}
 	sm.push(
 		&binding_infos,
 		Pipeline_Set_Binding_Info {
 			binding = UNIFORM_BINDING,
 			descriptor_type = .UNIFORM_BUFFER,
-			descriptor_count = BINDLESS_DESCRIPTOR_COUNT,
+			descriptor_count = MAX_DESCRIPTOR_BINDLESS_COUNT,
 			stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS,
 			flags = vk.DescriptorBindingFlags{.UPDATE_AFTER_BIND, .PARTIALLY_BOUND},
 		},
 		Pipeline_Set_Binding_Info {
 			binding = STORAGE_BINDING,
 			descriptor_type = .STORAGE_BUFFER,
-			descriptor_count = BINDLESS_DESCRIPTOR_COUNT,
+			descriptor_count = MAX_DESCRIPTOR_BINDLESS_COUNT,
 			stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS,
 			flags = vk.DescriptorBindingFlags{.UPDATE_AFTER_BIND, .PARTIALLY_BOUND},
 		},
 		Pipeline_Set_Binding_Info {
 			binding = TEXTURE_BINDING,
 			descriptor_type = .COMBINED_IMAGE_SAMPLER,
-			descriptor_count = BINDLESS_DESCRIPTOR_COUNT,
+			descriptor_count = MAX_DESCRIPTOR_BINDLESS_COUNT,
 			stage_flags = vk.ShaderStageFlags_ALL_GRAPHICS,
 			flags = vk.DescriptorBindingFlags{.UPDATE_AFTER_BIND, .PARTIALLY_BOUND},
 		},
 	)
 
-	return Pipeline_Set_Info{binding_infos = binding_infos}
+	return Pipeline_Set_Layout_Info{binding_infos = binding_infos}
 }
 
 @(require_results)
@@ -141,7 +141,7 @@ _bindless_init :: proc(bindless: ^Bindless, loc := #caller_location) {
 	for i in 0 ..< 3 {
 		descriptor_bindings[i].binding = cast(u32)i
 		descriptor_bindings[i].descriptorType = descriptor_types[i]
-		descriptor_bindings[i].descriptorCount = BINDLESS_DESCRIPTOR_COUNT
+		descriptor_bindings[i].descriptorCount = MAX_DESCRIPTOR_BINDLESS_COUNT
 		descriptor_bindings[i].stageFlags = vk.ShaderStageFlags_ALL_GRAPHICS
 		descriptor_binding_flags[i] = {.PARTIALLY_BOUND, .UPDATE_AFTER_BIND}
 	}

@@ -38,7 +38,8 @@ Buildin_Resource :: struct {
 	default_pipeline_h:   Render_Pipeline_Handle,
 	primitive_pipeline_h: Render_Pipeline_Handle,
 	text_pipeline_h:      Render_Pipeline_Handle,
-	square:               Model,
+	square:               Model, // TODO: depricated
+	unit_square:          Mesh,
 }
 
 Vulkan_State :: struct {
@@ -74,6 +75,7 @@ Graphics :: struct {
 	// managers
 	pipeline_manager:          ^Pipeline_Manager,
 	surface_manager:           ^Surface_Manager,
+	descriptor_layout_manager: Descriptor_Layout_Manager,
 	temp_material_pool:        ^Temp_Material_Pool, // TODO: move to Temps struct
 	temp_transform_pool:       ^Temp_Transform_Pool,
 	bindless:                  ^Bindless,
@@ -159,27 +161,22 @@ Pipeline_Stage_Info :: struct {
 	shader_path: string,
 }
 
-MAX_COLOR_ATTACHMENTS :: 4
-MAX_PIPELINE_SET_INFOS :: 4
-MAX_PIPELINE_STAGES_INFOS :: 8
-MAX_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION :: 16
-MAX_BINDING_INFOS :: 128
-Set_Infos :: sm.Small_Array(MAX_PIPELINE_SET_INFOS, Pipeline_Set_Info)
-Descriptor_Set_Layouts :: sm.Small_Array(MAX_PIPELINE_SET_INFOS, vk.DescriptorSetLayout)
-Stage_Infos :: sm.Small_Array(MAX_PIPELINE_STAGES_INFOS, Pipeline_Stage_Info)
-Pipeline_Shader_Stage_Create_Infos :: sm.Small_Array(MAX_PIPELINE_STAGES_INFOS, vk.PipelineShaderStageCreateInfo)
+Pipeline_Set_Layout_Infos :: sm.Small_Array(MAX_PIPELINE_SET_COUNT, Pipeline_Set_Layout_Info)
+Descriptor_Set_Layouts :: sm.Small_Array(MAX_PIPELINE_SET_COUNT, vk.DescriptorSetLayout)
+Stage_Infos :: sm.Small_Array(MAX_PIPELINE_STAGE_COUNT, Pipeline_Stage_Info)
+Pipeline_Shader_Stage_Create_Infos :: sm.Small_Array(MAX_PIPELINE_STAGE_COUNT, vk.PipelineShaderStageCreateInfo)
 Vertex_Input_Attribute_Descriptions :: sm.Small_Array(
-	MAX_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION,
+	MAX_PIPELINE_VERTEX_INPUT_ATTRIBUTE_COUNT,
 	Vertex_Input_Attribute_Description,
 )
-Binding_Infos :: sm.Small_Array(MAX_BINDING_INFOS, Pipeline_Set_Binding_Info)
+Pipeline_Set_Binding_Infos :: sm.Small_Array(MAX_PIPELINE_BINDING_COUNT, Pipeline_Set_Binding_Info)
 
-Pipeline_Set_Info :: struct {
-	binding_infos: Binding_Infos,
+Pipeline_Set_Layout_Info :: struct {
+	binding_infos: Pipeline_Set_Binding_Infos,
 }
 
 Create_Pipeline_Info :: struct {
-	set_infos:                Set_Infos,
+	set_infos:                Pipeline_Set_Layout_Infos,
 	bindless:                 bool,
 	stage_infos:              Stage_Infos,
 	vertex_input_description: struct {
@@ -218,14 +215,13 @@ Create_Pipeline_Info :: struct {
 }
 
 Create_Compute_Pipeline_Info :: struct {
-	set_infos:   Set_Infos,
+	set_infos:   Pipeline_Set_Layout_Infos,
 	shader_path: string,
 }
 
 Pipeline :: struct {
-	pipeline:               vk.Pipeline,
-	layout:                 vk.PipelineLayout,
-	descriptor_set_layouts: Descriptor_Set_Layouts,
+	pipeline: vk.Pipeline,
+	layout:   Pipeline_Layout_Info,
 }
 
 Render_Pipeline :: struct {
@@ -280,16 +276,19 @@ Swap_Chain :: struct {
 // FEATURES
 
 Physical_Device_Features :: struct {
-	dynamic_rendering:   vk.PhysicalDeviceDynamicRenderingFeatures,
+	dynamic_rendering_local_read: vk.PhysicalDeviceDynamicRenderingLocalReadFeatures,
 	// ^
 	// | pNext
-	descriptor_indexing: vk.PhysicalDeviceDescriptorIndexingFeatures,
+	dynamic_rendering:            vk.PhysicalDeviceDynamicRenderingFeatures,
 	// ^
 	// | pNext
-	synchronization:     vk.PhysicalDeviceSynchronization2Features,
+	descriptor_indexing:          vk.PhysicalDeviceDescriptorIndexingFeatures,
 	// ^
 	// | pNext
-	features:            vk.PhysicalDeviceFeatures2,
+	synchronization:              vk.PhysicalDeviceSynchronization2Features,
+	// ^
+	// | pNext
+	features:                     vk.PhysicalDeviceFeatures2,
 }
 
 // CAMERA
@@ -404,7 +403,6 @@ Surface_Manager :: struct {
 }
 
 Surface :: struct {
-	mesh:             Mesh,
 	transform:        Gfx_Transform,
 	color_attachment: Maybe(Surface_Color_Attachment),
 	depth_attachment: Maybe(Surface_Depth_Attachment),
@@ -419,9 +417,9 @@ Surface_Depth_Attachment :: struct {
 }
 
 Surface_Color_Attachment :: struct {
-	info:           vk.RenderingAttachmentInfo,
-	resource:       Texture,
-	resolve_handle: Texture_Handle,
+	info:         vk.RenderingAttachmentInfo,
+	msaa_texture: Maybe(Texture),
+	texture_h:    Texture_Handle,
 }
 
 // FRAME

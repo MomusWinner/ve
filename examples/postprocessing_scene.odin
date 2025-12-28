@@ -65,7 +65,6 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 
 	postprocessing_pipeline_h := create_postprocessing_pipeline()
 	pipe, ok_p_ := gfx.get_render_pipeline(postprocessing_pipeline_h)
-	assert(ok_p_, "Fuck")
 
 	// Setup Postprocessing Surface
 	init_mtrl_postprocessing(&data.postproc_mtrl, postprocessing_pipeline_h)
@@ -109,7 +108,7 @@ postprocessing_scene_draw :: proc(s: ^Scene) {
 
 	base_frame := gfx.begin_draw(frame)
 	{
-		gfx.draw_surface(surface, &data.camera, base_frame, &data.postproc_mtrl)
+		gfx.draw_surface_on_unit_square(surface, &data.camera, base_frame, &data.postproc_mtrl)
 	}
 	gfx.end_draw(base_frame)
 

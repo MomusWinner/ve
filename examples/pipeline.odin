@@ -49,7 +49,7 @@ default_shader_attribute :: proc() -> (gfx.Vertex_Input_Binding_Description, gfx
 create_default_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	set_infos := gfx.Set_Infos{}
+	set_infos := gfx.Pipeline_Set_Layout_Infos{}
 	sm.push_back(&set_infos, gfx.create_bindless_pipeline_set_info())
 
 	stages := gfx.Stage_Infos{}
@@ -87,7 +87,7 @@ create_default_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
 create_postprocessing_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	set_infos := gfx.Set_Infos{}
+	set_infos := gfx.Pipeline_Set_Layout_Infos{}
 	sm.push_back(&set_infos, gfx.create_bindless_pipeline_set_info())
 
 	stages := gfx.Stage_Infos{}
@@ -125,7 +125,7 @@ create_postprocessing_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
 create_light_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	set_infos := gfx.Set_Infos{}
+	set_infos := gfx.Pipeline_Set_Layout_Infos{}
 	sm.push_back(&set_infos, gfx.create_bindless_pipeline_set_info())
 
 	stages := gfx.Stage_Infos{}

@@ -48,12 +48,12 @@ destroy :: proc() {
 	_destroy_temp_pools()
 	_destroy_bindless()
 	_destroy_deffered_destructor()
+	_destroy_descriptor_layout_manager()
 	_destroy_sync_obj()
 	_destroy_swapchain()
 	_destroy_pipeline_manager()
 	_destroy_surface_manager()
 	_destroy_vulkan_state()
-
 
 	ctx = Graphics{}
 }
@@ -67,19 +67,6 @@ _init_vulkan_state :: proc() {
 	_create_vma_allocator()
 	_create_descriptor_pool()
 	_create_command_pool()
-
-	// log.info("VULKAN STATE")
-	// log.info("Instance", ctx.vulkan_state.instance)
-	// log.info("Physical device", ctx.vulkan_state.physical_device)
-	// log.info("Physical device props", ctx.vulkan_state.physical_device_property)
-	// log.info("Device", ctx.vulkan_state.device)
-	// log.info("Dbg_message", ctx.vulkan_state.dbg_messenger)
-	// log.info("allocator", ctx.vulkan_state.allocator)
-	// log.info("Graphics queue", ctx.vulkan_state.graphics_queue)
-	// log.info("Present queue", ctx.vulkan_state.present_queue)
-	// log.info("Surface", ctx.vulkan_state.surface)
-	// log.info("Command pool", ctx.vulkan_state.command_pool)
-	// log.info("Descriptor pool", ctx.vulkan_state.descriptor_pool)
 }
 
 @(private = "file")
@@ -484,8 +471,12 @@ byte_arr_str :: proc(arr: ^[$N]byte) -> string {
 
 @(private = "file")
 _get_physical_device_features :: proc(device: vk.PhysicalDevice, features: ^Physical_Device_Features) {
+	features.dynamic_rendering_local_read.sType = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES
+	features.dynamic_rendering_local_read.dynamicRenderingLocalRead = true
+
 	features.dynamic_rendering.sType = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES
 	features.dynamic_rendering.dynamicRendering = true
+	features.dynamic_rendering.pNext = &features.dynamic_rendering_local_read
 
 	features.descriptor_indexing.sType = .PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES
 	features.descriptor_indexing.pNext = &features.dynamic_rendering
@@ -501,6 +492,11 @@ _get_physical_device_features :: proc(device: vk.PhysicalDevice, features: ^Phys
 
 @(private = "file")
 _validate_physical_device_features :: proc(features: Physical_Device_Features) -> (bool, string) {
+	// DYNAMIC RENDERING LOCAL READ 
+	if !features.dynamic_rendering_local_read.dynamicRenderingLocalRead {
+		return false, "device does not support dynamic rendering local read"
+	}
+
 	// DYNAMIC RENDERING 
 	if !features.dynamic_rendering.dynamicRendering {
 		return false, "device does not support dynamic rendering"
@@ -550,8 +546,13 @@ _validate_physical_device_features :: proc(features: Physical_Device_Features) -
 
 get_required_physical_device_features :: proc(features: ^Physical_Device_Features) {
 	// DYNAMIC RENDERING 
+	features.dynamic_rendering_local_read.sType = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES
+	features.dynamic_rendering_local_read.pNext = nil
+	features.dynamic_rendering_local_read.dynamicRenderingLocalRead = true
+
+	// DYNAMIC RENDERING 
 	features.dynamic_rendering.sType = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES
-	features.dynamic_rendering.pNext = nil
+	features.dynamic_rendering.pNext = &features.dynamic_rendering_local_read
 	features.dynamic_rendering.dynamicRendering = true
 
 	// DESCRIPTOR INDEXING
@@ -582,6 +583,7 @@ get_required_physical_device_features :: proc(features: ^Physical_Device_Feature
 _init_buildin_resources :: proc() {
 	ctx.buildin = new(Buildin_Resource)
 	ctx.buildin.square = create_square_model()
+	ctx.buildin.unit_square = create_square_mesh(1)
 	ctx.buildin.text_pipeline_h = _text_default_pipeline()
 	ctx.buildin.primitive_pipeline_h = create_primitive_pipeline()
 }
@@ -591,5 +593,6 @@ _destroy_buildin :: proc() {
 	delete(ctx.buildin.square.materials)
 	ctx.buildin.square.materials = {}
 	destroy_model(&ctx.buildin.square)
+	destroy_mesh(&ctx.buildin.unit_square)
 	free(ctx.buildin)
 }

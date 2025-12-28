@@ -8,7 +8,7 @@ import vk "vendor:vulkan"
 create_primitive_pipeline :: proc() -> Render_Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
-	set_infos := Set_Infos{}
+	set_infos := Pipeline_Set_Layout_Infos{}
 	sm.push_back(&set_infos, create_bindless_pipeline_set_info())
 
 	stages := Stage_Infos{}

@@ -56,7 +56,6 @@ main :: proc() {
 	log.info("Successfuly close")
 }
 
-
 fixed_update :: proc(user_data: rawptr) {
 }
 

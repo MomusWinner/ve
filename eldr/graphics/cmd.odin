@@ -33,8 +33,9 @@ cmd_bind_index_buffer :: proc(
 
 cmd_push_constants :: proc(frame_data: Frame_Data, pipeline: Pipeline, const: ^$T, loc := #caller_location) {
 	assert_frame_data(frame_data, loc)
+	layout := get_pipeline_layout(pipeline.layout)
 
-	vk.CmdPushConstants(frame_data.cmd, pipeline.layout, vk.ShaderStageFlags_ALL_GRAPHICS, 0, size_of(const^), const)
+	vk.CmdPushConstants(frame_data.cmd, layout, vk.ShaderStageFlags_ALL_GRAPHICS, 0, size_of(const^), const)
 }
 
 cmd_draw :: proc(frame_data: Frame_Data, vertex_count: u32, instance_count: u32 = 1, loc := #caller_location) {
@@ -72,9 +73,9 @@ cmd_bind_descriptor_set_graphics :: proc(
 	frame_data: Frame_Data,
 	pipeline: ^Pipeline,
 	descriptor_sets: ..vk.DescriptorSet,
-	loc := #caller_location,
+	// loc := #caller_location,
 ) {
-	_cmd_bind_descriptor_set(frame_data, .GRAPHICS, pipeline, descriptor_sets, loc)
+	_cmd_bind_descriptor_set(frame_data, .GRAPHICS, pipeline, descriptor_sets)
 }
 
 cmd_bind_descriptor_set_compute :: proc(
@@ -96,10 +97,12 @@ _cmd_bind_descriptor_set :: proc(
 ) {
 	assert_gfx_ctx(loc)
 
+	layout := get_pipeline_layout(pipeline.layout)
+
 	vk.CmdBindDescriptorSets(
 		frame_data.cmd,
 		bind_point,
-		pipeline.layout,
+		layout,
 		0,
 		cast(u32)len(descriptor_sets),
 		raw_data(descriptor_sets),

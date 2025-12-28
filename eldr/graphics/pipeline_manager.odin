@@ -64,7 +64,7 @@ _pipeline_manager_destroy :: proc(pm: ^Pipeline_Manager) {
 }
 
 @(private)
-_pipeline_manager_registe_render_pipeline :: proc(
+_pipeline_manager_add_render_pipeline :: proc(
 	pm: ^Pipeline_Manager,
 	pipeline: Render_Pipeline,
 ) -> Render_Pipeline_Handle {
