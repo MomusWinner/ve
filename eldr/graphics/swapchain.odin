@@ -13,9 +13,9 @@ import "vma"
 @(private)
 _init_swapchain :: proc(sample_count: Sample_Count_Flag) {
 	ctx.swapchain = _swapchain_new(sample_count)
-	sc := _cmd_single_begin()
+	sc := begin_single_cmd()
 	_swapchain_setup(ctx.swapchain, sc.cmd)
-	_cmd_single_end(sc)
+	end_single_cmd(sc)
 }
 
 @(private)
@@ -100,9 +100,9 @@ _swapchain_recreate :: proc(swapchain: ^Swap_Chain) {
 
 	swapchain := _swapchain_new(swapchain.sample_count)
 
-	sc := _cmd_single_begin()
+	sc := begin_single_cmd()
 	_swapchain_setup(swapchain, sc.cmd)
-	_cmd_single_end(sc)
+	end_single_cmd(sc)
 }
 
 
@@ -155,7 +155,7 @@ _swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
 		allocation_info = allocation_info,
 	}
 
-	s := _cmd_single_begin()
+	s := begin_single_cmd()
 	_transition_image_layout(
 		s.cmd,
 		ctx.swapchain.color_image.image,
@@ -165,7 +165,7 @@ _swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
 		.COLOR_ATTACHMENT_OPTIMAL,
 		1,
 	)
-	_cmd_single_end(s)
+	end_single_cmd(s)
 
 }
 

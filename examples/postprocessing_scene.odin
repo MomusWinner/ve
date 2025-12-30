@@ -68,12 +68,11 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 
 	// Setup Postprocessing Surface
 	init_mtrl_postprocessing(&data.postproc_mtrl, postprocessing_pipeline_h)
-	data.surface_h = gfx.create_surface(._4)
+	data.surface_h = gfx.create_surface_fit_screen(._4)
 	surface, ok := gfx.get_surface(data.surface_h)
 	assert(ok)
 	mtrl_postprocessing_set_texture(&data.postproc_mtrl, gfx.surface_add_color_attachment(surface))
 	gfx.surface_add_depth_attachment(surface)
-
 
 	s.data = data
 }

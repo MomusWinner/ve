@@ -19,7 +19,7 @@ create_texture :: proc(
 	desired_channels: u32 = image.channels
 	image_size := cast(vk.DeviceSize)(image.width * image.height * desired_channels)
 
-	sc := _cmd_single_begin()
+	sc := begin_single_cmd()
 
 	// Staging Buffer
 	staging_buffer := _create_buffer(image_size, {.TRANSFER_SRC}, .AUTO, {.HOST_ACCESS_SEQUENTIAL_WRITE})
@@ -80,7 +80,7 @@ create_texture :: proc(
 		_generate_mipmaps(sc.cmd, vk_image, format, cast(i32)image.width, cast(i32)image.height, mip_levels)
 	}
 
-	_cmd_single_end(sc)
+	end_single_cmd(sc)
 
 	// Image View
 	image_view := _create_image_view(vk_image, format, {.COLOR}, mip_levels)
@@ -166,6 +166,18 @@ _transition_image_layout :: proc(
 
 		source_stage = {}
 		destination_stage = {.EARLY_FRAGMENT_TESTS}
+	} else if old_layout == .DEPTH_STENCIL_ATTACHMENT_OPTIMAL && new_layout == .SHADER_READ_ONLY_OPTIMAL {
+		barrier_src_access_mask = {.DEPTH_STENCIL_ATTACHMENT_WRITE}
+		barrier_dst_access_mask = {.SHADER_READ}
+
+		source_stage = {.LATE_FRAGMENT_TESTS}
+		destination_stage = {.FRAGMENT_SHADER}
+	} else if old_layout == .SHADER_READ_ONLY_OPTIMAL && new_layout == .DEPTH_STENCIL_ATTACHMENT_OPTIMAL {
+		barrier_src_access_mask = {.SHADER_READ}
+		barrier_dst_access_mask = {.DEPTH_STENCIL_ATTACHMENT_WRITE}
+
+		source_stage = {.FRAGMENT_SHADER}
+		destination_stage = {.LATE_FRAGMENT_TESTS}
 	} else if old_layout == .UNDEFINED && new_layout == .COLOR_ATTACHMENT_OPTIMAL {
 		barrier_src_access_mask = {}
 		barrier_dst_access_mask = {.COLOR_ATTACHMENT_WRITE}

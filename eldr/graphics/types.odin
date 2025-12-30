@@ -124,7 +124,7 @@ Deferred_Destructor :: struct {
 }
 
 @(private)
-SingleCommand :: struct {
+Single_Command :: struct {
 	cmd: vk.CommandBuffer,
 }
 
@@ -403,23 +403,35 @@ Surface_Manager :: struct {
 }
 
 Surface :: struct {
+	fit_screen:       bool,
+	width, height:    u32,
 	transform:        Gfx_Transform,
 	color_attachment: Maybe(Surface_Color_Attachment),
 	depth_attachment: Maybe(Surface_Depth_Attachment),
-	extent:           vk.Extent2D,
 	sample_count:     Sample_Count_Flag,
 	anisotropy:       f32,
-}
-
-Surface_Depth_Attachment :: struct {
-	resource: Texture,
-	info:     vk.RenderingAttachmentInfo,
 }
 
 Surface_Color_Attachment :: struct {
 	info:         vk.RenderingAttachmentInfo,
 	msaa_texture: Maybe(Texture),
 	texture_h:    Texture_Handle,
+}
+
+Surface_Depth_Attachment :: union {
+	Surface_Common_Depth_Attachment,
+	Surface_Readable_Depth_Attachment,
+}
+
+Surface_Common_Depth_Attachment :: struct {
+	resource: Texture,
+	info:     vk.RenderingAttachmentInfo,
+}
+
+Surface_Readable_Depth_Attachment :: struct {
+	msaa_texture: Maybe(Texture),
+	texture_h:    Texture_Handle,
+	info:         vk.RenderingAttachmentInfo,
 }
 
 // FRAME

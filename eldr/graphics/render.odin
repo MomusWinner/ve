@@ -270,7 +270,7 @@ on_screen_resized :: proc() {
 		if glfw.WindowShouldClose(ctx.window^) {return}
 	}
 	_recreate_swapchain()
-	_surface_manager_recreate_surfaces(ctx.surface_manager)
+	_surface_manager_resize_fit_screen_surfaces(ctx.surface_manager)
 }
 
 wait_render_completion :: proc() {

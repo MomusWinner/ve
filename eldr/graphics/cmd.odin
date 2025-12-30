@@ -111,9 +111,8 @@ _cmd_bind_descriptor_set :: proc(
 	)
 }
 
-@(private)
 @(require_results)
-_cmd_single_begin :: proc() -> SingleCommand {
+begin_single_cmd :: proc() -> Single_Command {
 	alloc_info := vk.CommandBufferAllocateInfo {
 		sType              = .COMMAND_BUFFER_ALLOCATE_INFO,
 		level              = .PRIMARY,
@@ -130,11 +129,10 @@ _cmd_single_begin :: proc() -> SingleCommand {
 	}
 	must(vk.BeginCommandBuffer(command_buffer, &begin_info))
 
-	return SingleCommand{cmd = command_buffer}
+	return Single_Command{cmd = command_buffer}
 }
 
-@(private)
-_cmd_single_end :: proc(single_command: SingleCommand) {
+end_single_cmd :: proc(single_command: Single_Command) {
 	command_buffer := single_command.cmd
 
 	must(vk.EndCommandBuffer(command_buffer))

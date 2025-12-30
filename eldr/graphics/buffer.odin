@@ -119,7 +119,7 @@ _create_device_local_buffer :: proc(
 	dst_access_mask: vk.AccessFlags,
 	dst_stage_mask: vk.PipelineStageFlags,
 ) -> Buffer {
-	sc := _cmd_single_begin()
+	sc := begin_single_cmd()
 
 	// Staging buffer
 	staging_buffer := _create_buffer(size, {.TRANSFER_SRC}, .AUTO, {.HOST_ACCESS_SEQUENTIAL_WRITE})
@@ -132,7 +132,7 @@ _create_device_local_buffer :: proc(
 	_copy_buffer(sc.cmd, staging_buffer, buffer, size)
 	_cmd_buffer_barrier(sc.cmd, buffer, {.TRANSFER_WRITE}, dst_access_mask, {.TRANSFER}, dst_stage_mask)
 
-	_cmd_single_end(sc)
+	end_single_cmd(sc)
 
 	return buffer
 }
@@ -146,12 +146,12 @@ _create_mapped_buffer :: proc(
 ) -> Buffer {
 	buffer := _create_buffer(size, usage, .AUTO_PREFER_HOST, {.HOST_ACCESS_SEQUENTIAL_WRITE, .MAPPED}, {}, {})
 
-	sc := _cmd_single_begin()
+	sc := begin_single_cmd()
 
 	must(vma.MapMemory(ctx.vulkan_state.allocator, buffer.allocation, &buffer.mapped))
 	_cmd_buffer_barrier(sc.cmd, buffer, {.HOST_WRITE}, dst_access_mask, {.HOST}, dst_stage_mask)
 
-	_cmd_single_end(sc)
+	end_single_cmd(sc)
 
 	return buffer
 }
