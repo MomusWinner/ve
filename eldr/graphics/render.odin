@@ -42,13 +42,17 @@ set_full_viewport_scissor :: proc(frame_data: Frame_Data, loc := #caller_locatio
 	set_scissor(frame_data, width, height, loc = loc)
 }
 
-set_viewport :: proc(frame_data: Frame_Data, width, height: u32, max_depth: f32 = 0.1, loc := #caller_location) {
+set_camera :: proc(frame_data: ^Frame_Data, camera: Camera) {
+	frame_data.camera = camera
+}
+
+set_viewport :: proc(frame_data: Frame_Data, width, height: u32, max_depth: f32 = 1, loc := #caller_location) {
 	assert_gfx_ctx(loc)
 
 	viewport := vk.Viewport {
 		width    = cast(f32)width,
 		height   = cast(f32)height,
-		maxDepth = max_depth,
+		maxDepth = 1,
 	}
 	vk.CmdSetViewport(frame_data.cmd, 0, 1, &viewport)
 }
@@ -63,9 +67,22 @@ set_scissor :: proc(frame_data: Frame_Data, width, height: u32, offset: ivec2 = 
 	vk.CmdSetScissor(frame_data.cmd, 0, 1, &scissor)
 }
 
+set_depth_bias :: proc(
+	frame_data: Frame_Data,
+	constant_factor: f32,
+	clamp: f32,
+	slope_factor: f32,
+	loc := #caller_location,
+) {
+	vk.CmdSetDepthBias(frame_data.cmd, constant_factor, clamp, slope_factor)
+}
+
 begin_render :: proc(loc := #caller_location) -> Frame_Data {
 	assert_gfx_ctx(loc)
 	assert(!ctx.render_started, "Call end_render() after begin_render()", loc)
+
+	_update_uniform_buffers()
+	_update_materials()
 
 	defer ctx.render_started = true
 
@@ -241,6 +258,8 @@ begin_draw :: proc(frame: Frame_Data, clear_color: vec4 = {0.0, 0.0, 0.0, 1.0}) 
 		type         = .Swapchain,
 		sample_count = ctx.swapchain.sample_count,
 		depth_format = ctx.swapchain.depth_image.format,
+		width        = ctx.swapchain.extent.width,
+		height       = ctx.swapchain.extent.height,
 	}
 	sm.push(&frame.surface_info.color_formats, ctx.swapchain.color_image.format)
 

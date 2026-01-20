@@ -22,9 +22,9 @@ vec4 blur13(sampler2D image, vec2 uv, vec2 resolution, vec2 direction) {
 
 void main() {
 	outColor = vec4(
-		fragTexCoord, 1, 1) * blur13(uGlobalTextures2D[getPostprocessingMaterial().texture],
+		fragTexCoord, 1, 1) * blur13(uGlobalTextures2D[getMtrlPostprocessing().texture],
 		fragTexCoord,
-		vec2(getPostprocessingMaterial().width, getPostprocessingMaterial().height),
+		vec2(getMtrlPostprocessing().width, getMtrlPostprocessing().height),
 		vec2(1, 1)
 	);
 }

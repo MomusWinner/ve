@@ -134,7 +134,7 @@ _shader_resolve_include :: proc "system" (
 	requestingSource: cstring,
 	ncludeDepth: c.size_t,
 ) -> ^shaderc.includeResult {
-	context = g_ctx
+	context = g_context
 
 	BUILDIN :: "buildin:"
 	source: string = strings.clone_from_cstring(requestedSource, allocator = context.temp_allocator)
@@ -166,7 +166,7 @@ _shader_resolve_include :: proc "system" (
 
 @(private = "file")
 _shader_result_releaser :: proc "system" (userData: rawptr, includeResult: ^shaderc.includeResult) {
-	context = g_ctx
+	context = g_context
 	delete(includeResult.sourceName)
 	delete(includeResult.content)
 	free(includeResult)

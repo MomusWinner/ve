@@ -122,6 +122,44 @@ create_postprocessing_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
 	return gfx.create_render_pipeline(create_info)
 }
 
+create_depth_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
+	vert_bind, vert_attr := default_shader_attribute()
+
+	set_infos := gfx.Pipeline_Set_Layout_Infos{}
+	sm.push_back(&set_infos, gfx.create_bindless_pipeline_set_info())
+
+	stages := gfx.Stage_Infos{}
+	sm.push_back_elems(
+		&stages,
+		gfx.Pipeline_Stage_Info{stage = .Vertex, shader_path = "assets/shaders/depth.vert"},
+		gfx.Pipeline_Stage_Info{stage = .Fragment, shader_path = "assets/shaders/depth.frag"},
+	)
+
+	create_info := gfx.Create_Pipeline_Info {
+		set_infos = set_infos,
+		bindless = true,
+		vertex_input_description = {
+			input_rate = .VERTEX,
+			binding_description = vert_bind,
+			attribute_descriptions = vert_attr,
+		},
+		stage_infos = stages,
+		input_assembly = {topology = .TRIANGLE_LIST},
+		rasterizer = {polygon_mode = .FILL, line_width = 1, cull_mode = {.BACK}, front_face = .COUNTER_CLOCKWISE},
+		depth = {
+			enable = true,
+			write_enable = true,
+			compare_op = .LESS,
+			bounds_test_enable = false,
+			min_bounds = 0,
+			max_bounds = 0,
+		},
+		stencil = {enable = true, front = {}, back = {}},
+	}
+
+	return gfx.create_render_pipeline(create_info)
+}
+
 create_light_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
 	vert_bind, vert_attr := default_shader_attribute()
 
@@ -146,6 +184,46 @@ create_light_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
 		stage_infos = stages,
 		input_assembly = {topology = .TRIANGLE_LIST},
 		rasterizer = {polygon_mode = .FILL, line_width = 1, cull_mode = {.BACK}, front_face = .COUNTER_CLOCKWISE},
+		depth = {
+			enable = true,
+			write_enable = true,
+			compare_op = .LESS,
+			bounds_test_enable = false,
+			min_bounds = 0,
+			max_bounds = 0,
+		},
+		stencil = {enable = true, front = {}, back = {}},
+	}
+
+	return gfx.create_render_pipeline(create_info)
+}
+
+create_depth_only_pipeline :: proc() -> gfx.Render_Pipeline_Handle {
+	vert_bind, vert_attr := default_shader_attribute()
+
+	set_infos := gfx.Pipeline_Set_Layout_Infos{}
+	sm.push_back(&set_infos, gfx.create_bindless_pipeline_set_info())
+
+	stages := gfx.Stage_Infos{}
+	sm.push_back_elems(&stages, gfx.Pipeline_Stage_Info{stage = .Vertex, shader_path = "assets/shaders/light.vert"})
+
+	create_info := gfx.Create_Pipeline_Info {
+		set_infos = set_infos,
+		bindless = true,
+		vertex_input_description = {
+			input_rate = .VERTEX,
+			binding_description = vert_bind,
+			attribute_descriptions = vert_attr,
+		},
+		stage_infos = stages,
+		input_assembly = {topology = .TRIANGLE_LIST},
+		rasterizer = {
+			depth_bias_enable = true,
+			polygon_mode = .FILL,
+			line_width = 1,
+			cull_mode = {.BACK},
+			front_face = .COUNTER_CLOCKWISE,
+		},
 		depth = {
 			enable = true,
 			write_enable = true,

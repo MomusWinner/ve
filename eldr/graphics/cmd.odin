@@ -50,17 +50,23 @@ cmd_draw_indexed :: proc(frame_data: Frame_Data, vertex_count: u32, instance_cou
 	vk.CmdDrawIndexed(frame_data.cmd, vertex_count, 1, 0, 0, 0)
 }
 
+cmd_bind_material :: proc(frame_data: Frame_Data, m: ^Material, loc := #caller_location) -> ^Graphics_Pipeline {
+	pipeline, ok := get_render_pipeline(m.pipeline_h)
+	return cmd_bind_render_pipeline(frame_data, pipeline, loc)
+}
+
 cmd_bind_render_pipeline :: proc(
 	frame_data: Frame_Data,
 	pipeline: ^Render_Pipeline,
 	loc := #caller_location,
-) -> Graphics_Pipeline {
+) -> ^Graphics_Pipeline {
 	assert_frame_data(frame_data, loc)
 
-	g_pipeline := render_pipeline_get_pipeline(pipeline, frame_data.surface_info)
-	vk.CmdBindPipeline(frame_data.cmd, .GRAPHICS, g_pipeline.pipeline)
+	graphics_pipeline := render_pipeline_get_pipeline(pipeline, frame_data.surface_info)
+	vk.CmdBindPipeline(frame_data.cmd, .GRAPHICS, graphics_pipeline.pipeline)
+	cmd_bind_descriptor_set_graphics(frame_data, graphics_pipeline, get_descriptor_set_bindless())
 
-	return g_pipeline
+	return graphics_pipeline
 }
 
 cmd_bind_compute_pipeline :: proc(pipeline: Compute_Pipeline, frame_data: Frame_Data, loc := #caller_location) {

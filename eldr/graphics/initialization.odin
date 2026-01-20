@@ -21,10 +21,10 @@ when ODIN_OS == .Darwin {
 @(private)
 ctx: Graphics
 @(private)
-g_ctx: runtime.Context // used for system callback procedures
+g_context: runtime.Context // used for system callback procedures
 
 init :: proc(init_info: Graphics_Init_Info, window: ^glfw.WindowHandle) {
-	g_ctx = context
+	g_context = context
 
 	ctx.initialized = true
 	ctx.window = window
@@ -38,6 +38,8 @@ init :: proc(init_info: Graphics_Init_Info, window: ^glfw.WindowHandle) {
 	_init_sync_obj()
 	_init_swapchain(init_info.swapchain_sample_count)
 	_init_deffered_destructor()
+	_init_material_manager()
+	_init_uniform_buffer_manager()
 	_init_bindless()
 	_init_temp_pools()
 	_init_buildin_resources()
@@ -47,6 +49,8 @@ destroy :: proc() {
 	_destroy_buildin()
 	_destroy_temp_pools()
 	_destroy_bindless()
+	_destroy_material_manager()
+	_destroy_uniform_buffer_manager()
 	_destroy_deffered_destructor()
 	_destroy_descriptor_layout_manager()
 	_destroy_sync_obj()
@@ -88,7 +92,7 @@ _vk_messenger_callback :: proc "system" (
 	pCallbackData: ^vk.DebugUtilsMessengerCallbackDataEXT,
 	pUserData: rawptr,
 ) -> b32 {
-	context = g_ctx
+	context = g_context
 
 	level: log.Level
 	if .ERROR in messageSeverity {
@@ -584,8 +588,8 @@ _init_buildin_resources :: proc() {
 	ctx.buildin = new(Buildin_Resource)
 	ctx.buildin.square = create_square_model()
 	ctx.buildin.unit_square = create_square_mesh(1)
-	ctx.buildin.text_pipeline_h = _text_default_pipeline()
-	ctx.buildin.primitive_pipeline_h = create_primitive_pipeline()
+	ctx.buildin.pipeline.text_h = _text_default_pipeline()
+	ctx.buildin.pipeline.primitive_h = create_primitive_pipeline()
 }
 
 @(private = "file")

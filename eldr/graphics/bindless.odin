@@ -13,17 +13,17 @@ STORAGE_BINDING :: 1
 TEXTURE_BINDING :: 2
 
 @(require_results)
-bindless_store_texture :: proc(texture: Texture, loc := #caller_location) -> Texture_Handle {
+store_texture :: proc(texture: Texture, loc := #caller_location) -> Texture_Handle {
 	assert_gfx_ctx(loc)
 
 	return _bindless_store_texture(ctx.bindless, texture, loc)
 }
 
-bindless_update_texture :: proc(texture_h: Texture_Handle, new_texture: Texture, loc := #caller_location) {
+update_texture_h :: proc(texture_h: Texture_Handle, new_texture: Texture, loc := #caller_location) {
 	_bindless_update_texture(ctx.bindless, texture_h, new_texture, loc)
 }
 
-bindless_destroy_texture :: proc(texture_h: Texture_Handle, loc := #caller_location) -> bool {
+destroy_texture_h :: proc(texture_h: Texture_Handle, loc := #caller_location) -> bool {
 	assert_gfx_ctx(loc)
 
 	texture, has_texture := _bindless_remove_texture(ctx.bindless, texture_h)
@@ -36,13 +36,13 @@ bindless_destroy_texture :: proc(texture_h: Texture_Handle, loc := #caller_locat
 }
 
 @(require_results)
-bindless_store_buffer :: proc(buffer: Buffer, loc := #caller_location) -> Buffer_Handle {
+store_buffer :: proc(buffer: Buffer, loc := #caller_location) -> Buffer_Handle {
 	assert_gfx_ctx(loc)
 
 	return _bindless_store_buffer(ctx.bindless, buffer, loc)
 }
 
-bindless_destroy_buffer :: proc(buffer_h: Buffer_Handle, loc := #caller_location) {
+destroy_buffer_h :: proc(buffer_h: Buffer_Handle, loc := #caller_location) {
 	assert_gfx_ctx(loc)
 
 	buffer, has_buffer := _bindless_remove_buffer(ctx.bindless, buffer_h)
@@ -52,7 +52,7 @@ bindless_destroy_buffer :: proc(buffer_h: Buffer_Handle, loc := #caller_location
 }
 
 @(require_results)
-bindless_get_buffer :: proc(buffer_h: Buffer_Handle, loc := #caller_location) -> ^Buffer {
+get_buffer_h :: proc(buffer_h: Buffer_Handle, loc := #caller_location) -> ^Buffer {
 	assert_gfx_ctx(loc)
 
 	result, ok := hm.get(&ctx.bindless.buffers, buffer_h)
@@ -96,17 +96,24 @@ create_bindless_pipeline_set_info :: proc() -> Pipeline_Set_Layout_Info {
 }
 
 @(require_results)
-bindless_get_texture :: proc(texture_h: Texture_Handle, loc := #caller_location) -> (^Texture, bool) {
+get_texture_h :: proc(texture_h: Texture_Handle, loc := #caller_location) -> (^Texture, bool) {
 	assert_gfx_ctx(loc)
 
 	return hm.get(&ctx.bindless.textures, texture_h)
 }
 
 @(require_results)
-bindless_has_texture :: proc(texture_h: Texture_Handle, loc := #caller_location) -> bool {
+has_texture_h :: proc(texture_h: Texture_Handle, loc := #caller_location) -> bool {
 	assert_gfx_ctx(loc)
 
 	return hm.has_handle(&ctx.bindless.textures, texture_h)
+}
+
+@(require_results)
+has_buffer_h :: proc(buffer_h: Buffer_Handle, loc := #caller_location) -> bool {
+	assert_gfx_ctx(loc)
+
+	return hm.has_handle(&ctx.bindless.buffers, buffer_h)
 }
 
 @(require_results)

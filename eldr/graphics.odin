@@ -30,12 +30,12 @@ load_texture :: proc(path: string, mip_levels: u32 = 1, anisotropy: f32 = 1) -> 
 	}
 	texture := gfx.create_texture(image, path, mip_levels, anisotropy)
 
-	return gfx.bindless_store_texture(texture)
+	return gfx.store_texture(texture)
 }
 
 @(require_results)
 get_texture :: proc(texture_h: gfx.Texture_Handle, loc := #caller_location) -> ^gfx.Texture {
-	texture, ok := gfx.bindless_get_texture(texture_h)
+	texture, ok := gfx.get_texture_h(texture_h)
 	if !ok {
 		log.panicf("Incorrect texture handle", location = loc)
 	}
@@ -44,7 +44,7 @@ get_texture :: proc(texture_h: gfx.Texture_Handle, loc := #caller_location) -> ^
 }
 
 unload_texture :: proc(texture_h: gfx.Texture_Handle) {
-	gfx.bindless_destroy_texture(texture_h)
+	gfx.destroy_texture_h(texture_h)
 }
 
 // MODEL

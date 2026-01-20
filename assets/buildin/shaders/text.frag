@@ -8,6 +8,6 @@ layout(location = 1) in vec4 fragColor;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-	float a = texture(uGlobalTextures2D[getBaseMaterial().texture], fragTexCoord).r; 
+	float a = texture(uGlobalTextures2D[getMtrlBase().texture], fragTexCoord).r; 
 	outColor = vec4(a) * fragColor;
 }

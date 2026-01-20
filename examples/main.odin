@@ -40,12 +40,12 @@ main :: proc() {
 		update,
 		draw,
 		destroy,
-		{gfx = {swapchain_sample_count = ._2}, window = {width = 800, height = 400, title = "VulkanTest"}},
+		{gfx = {swapchain_sample_count = ._4}, window = {width = 800, height = 400, title = "VulkanTest"}},
 	)
 
-	current_scene = create_model_scene()
+	// current_scene = create_model_scene()
 	// current_scene = create_postprocessing_scene()
-	// current_scene = create_light_scene()
+	current_scene = create_light_scene()
 	// current_scene = create_text_scene()
 	// current_scene = create_empty_scene()
 

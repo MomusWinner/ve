@@ -35,11 +35,13 @@ Pipeline_Stage_Flags :: vk.PipelineStageFlags
 Descriptor_Set :: vk.DescriptorSet
 
 Buildin_Resource :: struct {
-	default_pipeline_h:   Render_Pipeline_Handle,
-	primitive_pipeline_h: Render_Pipeline_Handle,
-	text_pipeline_h:      Render_Pipeline_Handle,
-	square:               Model, // TODO: depricated
-	unit_square:          Mesh,
+	pipeline:    struct {
+		default_h:   Render_Pipeline_Handle,
+		primitive_h: Render_Pipeline_Handle,
+		text_h:      Render_Pipeline_Handle,
+	},
+	square:      Model, // TODO: depricated
+	unit_square: Mesh,
 }
 
 Vulkan_State :: struct {
@@ -73,6 +75,8 @@ Graphics :: struct {
 	limits:                    Graphics_Limits,
 	swapchain:                 ^Swap_Chain,
 	// managers
+	unifiorm_buffer_manager:   ^Uniform_Buffer_Manager,
+	material_manager:          ^Material_Manager,
 	pipeline_manager:          ^Pipeline_Manager,
 	surface_manager:           ^Surface_Manager,
 	descriptor_layout_manager: Descriptor_Layout_Manager,
@@ -165,6 +169,8 @@ Pipeline_Set_Layout_Infos :: sm.Small_Array(MAX_PIPELINE_SET_COUNT, Pipeline_Set
 Descriptor_Set_Layouts :: sm.Small_Array(MAX_PIPELINE_SET_COUNT, vk.DescriptorSetLayout)
 Stage_Infos :: sm.Small_Array(MAX_PIPELINE_STAGE_COUNT, Pipeline_Stage_Info)
 Pipeline_Shader_Stage_Create_Infos :: sm.Small_Array(MAX_PIPELINE_STAGE_COUNT, vk.PipelineShaderStageCreateInfo)
+Pipeline_Dynamic_States :: sm.Small_Array(MAX_PIPELINE_DYNAMIC_STATE_COUNT, vk.DynamicState)
+
 Vertex_Input_Attribute_Descriptions :: sm.Small_Array(
 	MAX_PIPELINE_VERTEX_INPUT_ATTRIBUTE_COUNT,
 	Vertex_Input_Attribute_Description,
@@ -188,10 +194,11 @@ Create_Pipeline_Info :: struct {
 		topology: vk.PrimitiveTopology,
 	},
 	rasterizer:               struct {
-		polygon_mode: vk.PolygonMode,
-		line_width:   f32,
-		cull_mode:    vk.CullModeFlags,
-		front_face:   vk.FrontFace,
+		polygon_mode:      vk.PolygonMode,
+		line_width:        f32,
+		cull_mode:         vk.CullModeFlags,
+		front_face:        vk.FrontFace,
+		depth_bias_enable: b32,
 	},
 	attachment:               struct {
 		sample_count:             Sample_Count_Flags,
@@ -298,7 +305,13 @@ Camera_UBO :: struct {
 	projection: mat4,
 }
 
+Camera_Type :: enum {
+	Perspective,
+	Orthographic,
+}
+
 Camera :: struct {
+	type:        Camera_Type,
 	position:    vec3,
 	zoom:        vec3,
 	target:      vec3,
@@ -313,6 +326,13 @@ Camera :: struct {
 
 // MODEL
 
+Uniform_Buffer :: struct {
+	buffer_h: Buffer_Handle,
+	dirty:    bool,
+	apply:    proc(data: ^Uniform_Buffer, loc := #caller_location),
+	data:     rawptr,
+	type:     typeid,
+}
 
 Material :: struct {
 	pipeline_h: Render_Pipeline_Handle,
@@ -347,7 +367,7 @@ Mesh :: struct {
 
 Model :: struct {
 	meshes:        []Mesh,
-	materials:     [dynamic]Material,
+	materials:     [dynamic]Material_Handle,
 	mesh_material: [dynamic]int,
 }
 
@@ -376,7 +396,7 @@ Text :: struct {
 	last_vbo:  Buffer,
 	vertices:  []FontVertex,
 	transform: Gfx_Transform,
-	material:  Material,
+	material:  Material_Handle,
 }
 
 CharacterRegion :: struct {
@@ -452,12 +472,15 @@ Surface_Info :: struct {
 	sample_count:  Sample_Count_Flag,
 	depth_format:  vk.Format,
 	color_formats: sm.Small_Array(MAX_COLOR_ATTACHMENTS, vk.Format),
+	width:         u32,
+	height:        u32,
 }
 
 Frame_Data :: struct {
 	cmd:          vk.CommandBuffer,
 	status:       Frame_Status,
 	surface_info: Surface_Info,
+	camera:       Camera,
 }
 
 Render_Frame :: struct {
@@ -474,7 +497,7 @@ Sync_Data :: struct {
 Texture_Handle :: distinct hm.Handle
 Nil_Texture_Handle :: Texture_Handle{max(u32), max(u32)}
 Buffer_Handle :: distinct hm.Handle
-Nil_Buffer_Handle :: Texture_Handle{max(u32), max(u32)}
+Nil_Buffer_Handle :: Buffer_Handle{max(u32), max(u32)}
 
 Bindless :: struct {
 	set:        vk.DescriptorSet,
@@ -485,7 +508,7 @@ Bindless :: struct {
 
 // TEMP RESOURCES
 
-Temp_Material_Pool :: Temp_Pool(Material)
+Temp_Material_Pool :: Temp_Pool(Material_Handle)
 Temp_Transform_Pool :: Temp_Pool(Gfx_Transform)
 
 Temp_Pool :: struct($T: typeid) {

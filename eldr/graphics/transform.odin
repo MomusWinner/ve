@@ -10,7 +10,7 @@ init_gfx_trf :: proc(trf: ^Gfx_Transform, loc := #caller_location) {
 
 	buffer := create_uniform_buffer(size_of(Transform_UBO))
 	common.init_trf(trf, loc)
-	trf.buffer_h = bindless_store_buffer(buffer)
+	trf.buffer_h = store_buffer(buffer)
 }
 
 @(private)
@@ -25,7 +25,7 @@ _trf_apply :: proc(trf: ^Gfx_Transform, loc := #caller_location) {
 	model := common.trf_get_matrix(trf)
 	trf.dirty = false
 
-	buffer := bindless_get_buffer(trf.buffer_h)
+	buffer := get_buffer_h(trf.buffer_h)
 
 	transform_ubo := Transform_UBO {
 		model = model,
@@ -36,5 +36,5 @@ _trf_apply :: proc(trf: ^Gfx_Transform, loc := #caller_location) {
 
 destroy_trf :: proc(transform: ^Gfx_Transform, loc := #caller_location) {
 	assert_not_nil(transform, loc)
-	bindless_destroy_buffer(transform.buffer_h)
+	destroy_buffer_h(transform.buffer_h)
 }

@@ -10,10 +10,10 @@ layout(location = 0) out vec4 outColor;
 
 
 void main() {
-	if (!HANDLE_VALID(getBaseMaterial().texture)) {
-		outColor = getBaseMaterial().color;
+	if (!HANDLE_VALID(getMtrlBase().texture)) {
+		outColor = getMtrlBase().color;
 	}
 	else {
-		outColor = texture(uGlobalTextures2D[getBaseMaterial().texture], fragTexCoord);
+		outColor = texture(uGlobalTextures2D[getMtrlBase().texture], fragTexCoord);
 	}
 }

@@ -96,4 +96,4 @@ Shows anti-aliased text rendering with support for custom fonts and layouts.
 #### Light
 Example of simple lighting with ambient, diffuse components.
 
-![Light](./docs/images/example_light.png)
+![Light](./docs/images/example_light.jpg)

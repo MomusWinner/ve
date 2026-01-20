@@ -54,7 +54,7 @@ fill_buffer :: proc(
 	assert_not_nil(buffer, loc)
 	assert(buffer_size > 0, loc = loc)
 
-	vma.CopyMemoryToAllocation(ctx.vulkan_state.allocator, data, buffer.allocation, offset, buffer_size)
+	must(vma.CopyMemoryToAllocation(ctx.vulkan_state.allocator, data, buffer.allocation, offset, buffer_size))
 }
 
 @(private)

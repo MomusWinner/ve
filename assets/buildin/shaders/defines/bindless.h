@@ -68,4 +68,6 @@ RegisterUniform(Camera, {
     mat4 projection;
 });
 
-#define getCamera() GetResource(Camera, PushConstants.camera)
+#define getCameraByHandle(handle) GetResource(Camera, handle)
+
+#define getCamera() getCameraByHandle(PushConstants.camera)

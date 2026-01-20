@@ -45,8 +45,6 @@ draw_mesh :: proc(
 	material: ^Material,
 	camera: ^Camera,
 	transform: ^Gfx_Transform,
-	descriptor_sets: []Descriptor_Set = {},
-	bindless := true, // FIX:
 	loc := #caller_location,
 ) {
 	assert_gfx_ctx(loc)
@@ -67,21 +65,11 @@ draw_mesh :: proc(
 	assert(ok, "Couldn't get pipeline")
 
 	_trf_apply(transform)
-	material.apply(material)
 
-	g_pipeline := cmd_bind_render_pipeline(frame_data, pipeline, loc)
-
-	if (bindless) {
-		s := sm.Small_Array(MAX_PIPELINE_SET_COUNT, Descriptor_Set){}
-		sm.push(&s, get_descriptor_set_bindless())
-		sm.push(&s, ..descriptor_sets)
-		cmd_bind_descriptor_set_graphics(frame_data, &g_pipeline, ..sm.slice(&s))
-	} else {
-		cmd_bind_descriptor_set_graphics(frame_data, &g_pipeline, ..descriptor_sets)
-	}
+	g_pipeline := cmd_bind_material(frame_data, material, loc)
 
 	const := Push_Constant {
-		camera   = _camera_get_buffer(camera, get_screen_aspect()).index,
+		camera   = _camera_get_buffer(camera, cast(f32)frame_data.surface_info.width / cast(f32)frame_data.surface_info.height).index,
 		model    = transform.buffer_h.index,
 		material = material.buffer_h.index,
 	}
@@ -95,16 +83,13 @@ draw_mesh :: proc(
 	}
 }
 
-create_model :: proc(meshes: []Mesh, materials: [dynamic]Material, mesh_material: [dynamic]int) -> Model {
+create_model :: proc(meshes: []Mesh, materials: [dynamic]Material_Handle, mesh_material: [dynamic]int) -> Model {
 	return Model{meshes = meshes, materials = materials, mesh_material = mesh_material}
 }
 
 destroy_model :: proc(model: ^Model) {
 	for &mesh in model.meshes {
 		destroy_mesh(&mesh)
-	}
-	for &mat in model.materials {
-		destroy_mtrl(&mat)
 	}
 
 	delete(model.meshes)
@@ -117,8 +102,6 @@ draw_model :: proc(
 	model: Model,
 	camera: ^Camera,
 	transform: ^Gfx_Transform,
-	bindless: bool = true,
-	descriptor_sets: []Descriptor_Set = {},
 	loc := #caller_location,
 ) {
 	assert_gfx_ctx(loc)
@@ -126,15 +109,46 @@ draw_model :: proc(
 
 	for &mesh, i in model.meshes {
 		material_index := model.mesh_material[i]
-		draw_mesh(
-			frame_data,
-			&mesh,
-			&model.materials[material_index],
-			camera,
-			transform,
-			descriptor_sets,
-			bindless,
-			loc,
-		)
+		mtrl, ok := get_material(model.materials[material_index])
+		assert(ok, loc = loc)
+
+		draw_mesh(frame_data, &mesh, mtrl, camera, transform, loc)
+	}
+}
+
+draw_model_solid :: proc(
+	frame_data: Frame_Data,
+	model: Model,
+	camera: ^Camera,
+	transform: ^Gfx_Transform,
+	material: ^Material,
+	loc := #caller_location,
+) {
+	assert_gfx_ctx(loc)
+	assert_not_nil(transform, loc)
+
+	for &mesh, i in model.meshes {
+		draw_mesh(frame_data, &mesh, material, camera, transform, loc)
+	}
+}
+
+model_set_material :: proc(model: ^Model, material_h: Material_Handle, loc := #caller_location) {
+	assert_gfx_ctx(loc)
+	assert_not_nil(model, loc)
+
+	if model.mesh_material != nil {
+		delete(model.mesh_material)
+	}
+
+	if model.materials != nil {
+		delete(model.materials)
+	}
+
+	model.materials = make([dynamic]Material_Handle, 1)
+	model.mesh_material = make([dynamic]int, len(model.meshes))
+
+	model.materials[0] = material_h
+	for &mesh, i in model.meshes {
+		model.mesh_material[i] = 0
 	}
 }

@@ -120,7 +120,7 @@ load_font :: proc(create_info: Create_Font_Info, loc := #caller_location) -> Fon
 		pixel    = .R8,
 	}
 
-	texture_h := bindless_store_texture(create_texture(image, create_info.path, 1))
+	texture_h := store_texture(create_texture(image, create_info.path, 1))
 
 	return Font {
 		name = create_info.path,
@@ -158,16 +158,17 @@ create_text :: proc(
 	common.trf_set_position(&trf, start_position)
 	common.trf_set_scale(&trf, vec3{1, 1, 1} * size)
 
-	material := Material{}
+	material_h := create_mtrl_base(ctx.buildin.pipeline.text_h)
+	material, ok := get_material(material_h)
+	assert(ok, loc = loc)
 
-	init_mtrl_base(&material, ctx.buildin.text_pipeline_h)
-	mtrl_base_set_texture(&material, font.texture_h)
-	mtrl_base_set_color(&material, color)
+	mtrl_base_set_texture(material, font.texture_h)
+	mtrl_base_set_color(material, color)
 
 	text := Text {
 		text      = text,
 		font      = font,
-		material  = material,
+		material  = material_h,
 		transform = trf,
 		size      = size,
 	}
@@ -193,7 +194,10 @@ text_set_string :: proc(text: ^Text, text_str: string, loc := #caller_location) 
 text_set_color :: proc(text: ^Text, color: vec4, loc := #caller_location) {
 	assert_not_nil(text, loc)
 
-	mtrl_base_set_color(&text.material, color)
+	material, ok := get_material(text.material)
+	assert(ok, loc = loc)
+
+	mtrl_base_set_color(material, color)
 }
 
 text_set_position :: proc(text: ^Text, position: vec3, loc := #caller_location) {
@@ -207,22 +211,19 @@ draw_text :: proc(text: ^Text, frame_data: Frame_Data, camera: ^Camera, loc := #
 	assert_gfx_ctx(loc)
 	assert_not_nil(text, loc)
 
-	text.material.apply(&text.material)
 	_trf_apply(&text.transform)
 
-	pipeline, ok := get_render_pipeline(text.material.pipeline_h)
-	assert(ok)
+	material, mtrl_ok := get_material(text.material)
+	assert(mtrl_ok, loc = loc)
 
 	cmd_bind_vertex_buffer(frame_data, text.vbo)
 
-	g_pipeline := cmd_bind_render_pipeline(frame_data, pipeline)
-
-	cmd_bind_descriptor_set_graphics(frame_data, &g_pipeline, get_descriptor_set_bindless())
+	g_pipeline := cmd_bind_material(frame_data, material)
 
 	const := Push_Constant {
 		camera   = _camera_get_buffer(camera, get_screen_aspect()).index,
 		model    = text.transform.buffer_h.index,
-		material = text.material.buffer_h.index,
+		material = material.buffer_h.index,
 	}
 	cmd_push_constants(frame_data, g_pipeline, &const)
 
@@ -235,7 +236,6 @@ destroy_text :: proc(text: ^Text, loc := #caller_location) {
 
 	destroy_buffer(&text.vbo)
 	destroy_trf(&text.transform)
-	destroy_mtrl(&text.material)
 }
 
 @(private)

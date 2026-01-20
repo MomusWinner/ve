@@ -21,14 +21,14 @@ create_render_pipeline :: proc(
 }
 
 // Looks up a pipeline in cache using surface settings. If not found, creates a new one.
-render_pipeline_get_pipeline :: proc(pipeline: ^Render_Pipeline, surface_info: Surface_Info) -> Graphics_Pipeline {
+render_pipeline_get_pipeline :: proc(pipeline: ^Render_Pipeline, surface_info: Surface_Info) -> ^Graphics_Pipeline {
 	graphics_pipeline, ok := pipeline.cache[surface_info]
-	if ok do return graphics_pipeline
+	if ok do return &pipeline.cache[surface_info]
 
 	new_pipeline := _create_graphics_pipeline(pipeline.create_info, surface_info)
 	pipeline.cache[surface_info] = new_pipeline
 
-	return new_pipeline
+	return &pipeline.cache[surface_info]
 }
 
 destroy_render_pipeline :: proc(pipeline: ^Render_Pipeline) {
@@ -97,8 +97,9 @@ _reload_graphics_pipeline :: proc(pipeline: ^Graphics_Pipeline, create_info: Cre
 	multisample_state: vk.PipelineMultisampleStateCreateInfo
 	color_blend_sate: vk.PipelineColorBlendStateCreateInfo
 	color_blend_attachment: vk.PipelineColorBlendAttachmentState
+
 	dynamic_state: vk.PipelineDynamicStateCreateInfo
-	dynamic_states: [2]vk.DynamicState
+	dynamic_states: Pipeline_Dynamic_States
 	depth_stancil: vk.PipelineDepthStencilStateCreateInfo
 
 	_init_vertex_input_info(&vertex_input_sate, &vertex_binding_info, &create_info)
@@ -283,7 +284,7 @@ _create_graphics_pipeline :: proc(
 	color_blend_sate: vk.PipelineColorBlendStateCreateInfo
 	color_blend_attachment: vk.PipelineColorBlendAttachmentState
 	dynamic_state: vk.PipelineDynamicStateCreateInfo
-	dynamic_states: [2]vk.DynamicState
+	dynamic_states: Pipeline_Dynamic_States
 	depth_stancil: vk.PipelineDepthStencilStateCreateInfo
 
 	_init_vertex_input_info(&vertex_input_sate, &vertex_binding_info, &create_info)
@@ -576,15 +577,18 @@ _destroy_shader_stages :: proc(shader_stages: Pipeline_Shader_Stage_Create_Infos
 @(private = "file")
 _init_dynamic_info :: proc(
 	info: ^vk.PipelineDynamicStateCreateInfo,
-	dynamic_states: ^[2]vk.DynamicState,
+	dynamic_states: ^Pipeline_Dynamic_States,
 	create_info: ^Create_Pipeline_Info,
 ) {
-	dynamic_states[0] = .VIEWPORT
-	dynamic_states[1] = .SCISSOR
+	sm.append_elems(dynamic_states, vk.DynamicState.VIEWPORT, vk.DynamicState.SCISSOR)
+
+	if create_info.rasterizer.depth_bias_enable {
+		sm.append_elem(dynamic_states, vk.DynamicState.DEPTH_BIAS)
+	}
 
 	info.sType = .PIPELINE_DYNAMIC_STATE_CREATE_INFO
-	info.dynamicStateCount = 2
-	info.pDynamicStates = raw_data(dynamic_states)
+	info.dynamicStateCount = cast(u32)sm.len(dynamic_states^)
+	info.pDynamicStates = raw_data(sm.slice(dynamic_states))
 }
 
 @(private = "file")
@@ -623,6 +627,7 @@ _init_viewport_info :: proc(info: ^vk.PipelineViewportStateCreateInfo, create_in
 @(private = "file")
 _init_rasterizer :: proc(info: ^vk.PipelineRasterizationStateCreateInfo, create_info: ^Create_Pipeline_Info) {
 	info.sType = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO
+	info.depthBiasEnable = create_info.rasterizer.depth_bias_enable
 	info.polygonMode = create_info.rasterizer.polygon_mode
 	info.lineWidth = create_info.rasterizer.line_width
 	info.cullMode = create_info.rasterizer.cull_mode

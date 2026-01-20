@@ -11,7 +11,7 @@ import "core:time"
 Model_Scene_Data :: struct {
 	texture_h:      gfx.Texture_Handle,
 	model:          gfx.Model,
-	material:       gfx.Material,
+	material:       gfx.Material_Handle,
 	transform:      gfx.Gfx_Transform,
 	camera:         gfx.Camera,
 	pipeline_h:     gfx.Render_Pipeline_Handle,
@@ -44,8 +44,9 @@ model_scene_init :: proc(s: ^Scene) {
 	data.pipeline_h = create_default_pipeline()
 
 	// Setup Material
-	gfx.init_mtrl_base(&data.material, data.pipeline_h)
-	gfx.mtrl_base_set_texture(&data.material, data.texture_h)
+	data.material = gfx.create_mtrl_base(data.pipeline_h)
+	material, _ := gfx.get_material(data.material)
+	gfx.mtrl_base_set_texture(material, data.texture_h)
 	append(&data.model.materials, data.material)
 	append(&data.model.mesh_material, 0)
 

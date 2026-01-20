@@ -17,13 +17,13 @@ Postprocessing_Material :: struct {
 
 Postprocessing_Scene_Data :: struct {
 	model:          gfx.Model,
-	model_material: gfx.Material,
+	model_material: gfx.Material_Handle,
 	texture_h:      gfx.Texture_Handle,
 	pipeline_h:     gfx.Render_Pipeline_Handle,
 	transform:      gfx.Gfx_Transform,
 	camera:         gfx.Camera,
 	surface_h:      gfx.Surface_Handle,
-	postproc_mtrl:  gfx.Material,
+	postproc_mtrl:  gfx.Material_Handle,
 }
 
 create_postprocessing_scene :: proc() -> Scene {
@@ -52,8 +52,9 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 	data.pipeline_h = create_default_pipeline()
 
 	// Setup Material
-	gfx.init_mtrl_base(&data.model_material, data.pipeline_h)
-	gfx.mtrl_base_set_texture(&data.model_material, data.texture_h)
+	data.model_material = gfx.create_mtrl_base(data.pipeline_h)
+	model_material, _ := gfx.get_material(data.model_material)
+	gfx.mtrl_base_set_texture(model_material, data.texture_h)
 	append(&data.model.materials, data.model_material)
 	append(&data.model.mesh_material, 0)
 
@@ -67,11 +68,13 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 	pipe, ok_p_ := gfx.get_render_pipeline(postprocessing_pipeline_h)
 
 	// Setup Postprocessing Surface
-	init_mtrl_postprocessing(&data.postproc_mtrl, postprocessing_pipeline_h)
+	data.postproc_mtrl = create_mtrl_postprocessing(postprocessing_pipeline_h)
+	postproc_mtrl, _ := gfx.get_material(data.postproc_mtrl)
+
 	data.surface_h = gfx.create_surface_fit_screen(._4)
 	surface, ok := gfx.get_surface(data.surface_h)
 	assert(ok)
-	mtrl_postprocessing_set_texture(&data.postproc_mtrl, gfx.surface_add_color_attachment(surface))
+	mtrl_postprocessing_set_texture(postproc_mtrl, gfx.surface_add_color_attachment(surface))
 	gfx.surface_add_depth_attachment(surface)
 
 	s.data = data
@@ -92,9 +95,10 @@ postprocessing_scene_draw :: proc(s: ^Scene) {
 	// --------------------------------------------------------------------------------------------------------------------
 
 	gfx.set_full_viewport_scissor(frame)
+	postproc_mtrl, _ := gfx.get_material(data.postproc_mtrl)
 
-	mtrl_postprocessing_set_width(&data.postproc_mtrl, cast(f32)eldr.get_screen_width())
-	mtrl_postprocessing_set_height(&data.postproc_mtrl, cast(f32)eldr.get_screen_height())
+	mtrl_postprocessing_set_width(postproc_mtrl, cast(f32)eldr.get_screen_width())
+	mtrl_postprocessing_set_height(postproc_mtrl, cast(f32)eldr.get_screen_height())
 
 	surface, ok := gfx.get_surface(data.surface_h)
 	assert(ok)
@@ -107,7 +111,7 @@ postprocessing_scene_draw :: proc(s: ^Scene) {
 
 	base_frame := gfx.begin_draw(frame)
 	{
-		gfx.draw_surface_on_unit_square(surface, &data.camera, base_frame, &data.postproc_mtrl)
+		gfx.draw_surface_on_unit_square(surface, &data.camera, base_frame, postproc_mtrl)
 	}
 	gfx.end_draw(base_frame)
 
@@ -120,7 +124,6 @@ postprocessing_scene_destroy :: proc(s: ^Scene) {
 	data := cast(^Postprocessing_Scene_Data)s.data
 
 	eldr.unload_texture(data.texture_h)
-	gfx.destroy_mtrl(&data.postproc_mtrl)
 	gfx.destroy_model(&data.model)
 	gfx.destroy_surface(data.surface_h)
 

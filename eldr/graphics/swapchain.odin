@@ -166,7 +166,6 @@ _swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
 		1,
 	)
 	end_single_cmd(s)
-
 }
 
 @(private = "file")

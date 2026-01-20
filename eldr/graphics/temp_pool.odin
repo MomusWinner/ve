@@ -21,7 +21,7 @@ _destroy_temp_pools :: proc() {
 }
 
 @(require_results)
-_temp_pool_acquire_material :: proc() -> Material {
+_temp_pool_acquire_material :: proc() -> Material_Handle {
 	return _temp_pool_acquire(ctx.temp_material_pool)
 }
 
@@ -74,15 +74,12 @@ _temp_pool_clear :: proc(pool: ^$P/Temp_Pool($T)) {
 _init_temp_material_pool :: proc(pool: ^Temp_Material_Pool, size: int, allocator := context) {
 	_init_temp_pool(pool, size)
 	for i in 0 ..< size {
-		init_mtrl_base(&pool.resources[i], {})
+		pool.resources[i] = create_mtrl_base({}) // FIX: 
 	}
 }
 
 @(private = "file")
 _destroy_temp_material_pool :: proc(pool: ^Temp_Material_Pool) {
-	for i in 0 ..< len(pool.resources) {
-		destroy_mtrl(&pool.resources[i])
-	}
 	_destroy_temp_pool(pool)
 }
 

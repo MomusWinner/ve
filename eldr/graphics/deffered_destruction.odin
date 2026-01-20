@@ -37,11 +37,11 @@ _deffered_destructor_clear :: proc(d: ^Deferred_Destructor) {
 		case Buffer:
 			destroy_buffer(&resource)
 		case Buffer_Handle:
-			bindless_destroy_buffer(resource)
+			destroy_buffer_h(resource)
 		case Texture:
 			destroy_texture(&resource)
 		case Texture_Handle:
-			bindless_destroy_texture(resource)
+			destroy_texture_h(resource)
 		}
 	}
 	d.next_index = 0
