@@ -52,7 +52,7 @@ main :: proc() {
 	Options :: struct {
 		src_dir:          string `args:"required" usage:"Package directory containing original material types @(material)."`,
 		outpute_glsl_dir: string `args:"required" usage:"Shaders directory."`,
-		gfx_import:       string `usage:"Path to graphics package. (gfx eldr/graphics, eldr/graphics, <empty>)"`,
+		gfx_import:       string `usage:"Path to graphics package. (gfx ve/graphics, ve/graphics, <empty>)"`,
 	}
 
 	opt: Options
@@ -699,8 +699,8 @@ Expected:
 	gfx_import = ""
 
 Examples:
-	"eldr/graphics"
-	"gfx eldr/graphics"
+	"ve/graphics"
+	"gfx ve/graphics"
 	""
 
 But got:`,

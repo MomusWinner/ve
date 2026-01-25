@@ -1,4 +1,4 @@
-package eldr
+package ve
 
 import "common"
 import gfx "graphics"
@@ -26,7 +26,7 @@ Game_Time :: struct {
 	fixed_update_total_time: f64,
 }
 
-Eldr :: struct {
+Ve :: struct {
 	window:            glfw.WindowHandle,
 	should_close:      bool,
 	game_time:         Game_Time,
@@ -37,7 +37,7 @@ Eldr :: struct {
 	destroy_proc:      game_event_proc,
 }
 
-Eldr_Info :: struct {
+Ve_Info :: struct {
 	gfx:    gfx.Graphics_Init_Info,
 	window: struct {
 		title:  string,

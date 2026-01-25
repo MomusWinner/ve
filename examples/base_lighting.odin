@@ -1,7 +1,7 @@
 package main
 
-import "../eldr"
-import gfx "../eldr/graphics"
+import ve ".."
+import gfx "../graphics"
 import "base:runtime"
 import "core:log"
 import "core:math"
@@ -73,7 +73,7 @@ light_scene_init :: proc(s: ^Scene) {
 	data.l_camera.fov = 10
 
 	// Load Model
-	data.model = eldr.load_model("./assets/Suzanne.obj")
+	data.model = ve.load_model("./assets/Suzanne.obj")
 	data.ground = gfx.create_square_model()
 
 	pipeline_h := create_light_pipeline()
@@ -108,16 +108,16 @@ light_scene_init :: proc(s: ^Scene) {
 
 	// Setup Transform
 	gfx.init_gfx_trf(&data.transform)
-	eldr.trf_set_position(&data.transform, {0, 1, 0})
+	ve.trf_set_position(&data.transform, {0, 1, 0})
 
 	gfx.init_gfx_trf(&data.ground_transform)
-	eldr.trf_set_position(&data.ground_transform, {0, 0, 0})
-	eldr.trf_set_scale(&data.ground_transform, 100)
-	eldr.trf_rotate(&data.ground_transform, {1, 0, 0}, 3.14 / 2)
+	ve.trf_set_position(&data.ground_transform, {0, 0, 0})
+	ve.trf_set_scale(&data.ground_transform, 100)
+	ve.trf_rotate(&data.ground_transform, {1, 0, 0}, 3.14 / 2)
 
 	gfx.init_gfx_trf(&data.square_trf)
-	eldr.trf_set_position(&data.square_trf, {-0.7, -0.7, 0})
-	eldr.trf_set_scale(&data.square_trf, 0.3)
+	ve.trf_set_position(&data.square_trf, {-0.7, -0.7, 0})
+	ve.trf_set_scale(&data.square_trf, 0.3)
 
 	data.shadow_map_view_mesh = gfx.create_square_mesh(0.5)
 
@@ -139,17 +139,17 @@ light_scene_update :: proc(s: ^Scene) {
 	camera: ^gfx.Camera
 	camera = &data.l_camera
 
-	if eldr.is_key_down(.W) {
-		camera.position.z += eldr.get_delta_time() * speed
+	if ve.is_key_down(.W) {
+		camera.position.z += ve.get_delta_time() * speed
 	}
-	if eldr.is_key_down(.S) {
-		camera.position.z -= eldr.get_delta_time() * speed
+	if ve.is_key_down(.S) {
+		camera.position.z -= ve.get_delta_time() * speed
 	}
-	if eldr.is_key_down(.A) {
-		camera.position.x += eldr.get_delta_time() * speed
+	if ve.is_key_down(.A) {
+		camera.position.x += ve.get_delta_time() * speed
 	}
-	if eldr.is_key_down(.D) {
-		camera.position.x -= eldr.get_delta_time() * speed
+	if ve.is_key_down(.D) {
+		camera.position.x -= ve.get_delta_time() * speed
 	}
 	camera.dirty = true
 }

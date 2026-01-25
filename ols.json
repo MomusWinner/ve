@@ -9,8 +9,8 @@
 	"enable_rename": true,
 	"profile": "default",
 	"profiles": [
-		{ "name": "default", "checker_path": ["./examples", "./eldr"]},
-		{ "name": "linux_profile", "os": "linux", "checker_path": ["./examples", "./eldr"]},
-		{ "name": "windows_profile", "os": "windows", "checker_path": ["./examples", "./eldr"]}
+		{ "name": "default", "checker_path": ["./examples", "."]},
+		{ "name": "linux_profile", "os": "linux", "checker_path": ["./examples", "."]},
+		{ "name": "windows_profile", "os": "windows", "checker_path": ["./examples", "."]}
 	]
 }

@@ -1,7 +1,7 @@
 package main
 
-import "../eldr"
-import gfx "../eldr/graphics"
+import ve ".."
+import gfx "../graphics"
 import sm "core:container/small_array"
 import "core:log"
 import "core:mem/virtual"

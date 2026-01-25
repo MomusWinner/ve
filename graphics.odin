@@ -1,4 +1,4 @@
-package eldr
+package ve
 
 import "core:log"
 import gfx "graphics"

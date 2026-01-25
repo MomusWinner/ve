@@ -1,7 +1,7 @@
 package main
 
-import "../eldr"
-import gfx "../eldr/graphics"
+import ve ".."
+import gfx "../graphics"
 import "base:runtime"
 import "core:log"
 import "core:math"
@@ -39,8 +39,8 @@ model_scene_init :: proc(s: ^Scene) {
 	gfx.camera_init(&data.camera)
 
 	// Load Model
-	data.texture_h = eldr.load_texture("./assets/room.png")
-	data.model = eldr.load_model("./assets/room.obj")
+	data.texture_h = ve.load_texture("./assets/room.png")
+	data.model = ve.load_model("./assets/room.obj")
 	data.pipeline_h = create_default_pipeline()
 
 	// Setup Material
@@ -52,16 +52,16 @@ model_scene_init :: proc(s: ^Scene) {
 
 	// Setup Transform
 	gfx.init_gfx_trf(&data.transform)
-	eldr.trf_set_position(&data.transform, {0, -0.5, -1})
-	eldr.trf_set_scale(&data.transform, {0.5, 0.5, 0.5})
+	ve.trf_set_position(&data.transform, {0, -0.5, -1})
+	ve.trf_set_scale(&data.transform, {0.5, 0.5, 0.5})
 
 	s.data = data
 }
 
 model_scene_update :: proc(s: ^Scene) {
 	data := cast(^Model_Scene_Data)s.data
-	data.model_rotation += eldr.get_delta_time()
-	eldr.trf_rotate(&data.transform, {0, 1, 0}, data.model_rotation)
+	data.model_rotation += ve.get_delta_time()
+	ve.trf_rotate(&data.transform, {0, 1, 0}, data.model_rotation)
 }
 
 model_scene_draw :: proc(s: ^Scene) {
@@ -92,7 +92,7 @@ model_scene_draw :: proc(s: ^Scene) {
 model_scene_destroy :: proc(s: ^Scene) {
 	data := cast(^Model_Scene_Data)s.data
 
-	eldr.unload_texture(data.texture_h)
+	ve.unload_texture(data.texture_h)
 	gfx.destroy_model(&data.model)
 
 	free(data)

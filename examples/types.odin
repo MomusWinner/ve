@@ -1,15 +1,15 @@
 package main
 
-import "../eldr"
+import ve ".."
 import "core:math/linalg/glsl"
 
-vec2 :: eldr.vec2
-vec3 :: eldr.vec3
-vec4 :: eldr.vec4
-ivec2 :: eldr.ivec2
-ivec3 :: eldr.ivec3
-ivec4 :: eldr.ivec4
-mat4 :: eldr.mat4
-color :: eldr.color
-Vertex :: eldr.Vertex
-Image :: eldr.Image
+vec2 :: ve.vec2
+vec3 :: ve.vec3
+vec4 :: ve.vec4
+ivec2 :: ve.ivec2
+ivec3 :: ve.ivec3
+ivec4 :: ve.ivec4
+mat4 :: ve.mat4
+color :: ve.color
+Vertex :: ve.Vertex
+Image :: ve.Image

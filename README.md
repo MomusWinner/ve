@@ -11,7 +11,7 @@ A small Vulkan Rendering Engine
 ### Pipeline Hot Reloading
 Real-time shader and pipeline recompilation during runtime
 ```odin
-    if (eldr.is_key_pressed(.R)) {
+    if (ve.is_key_pressed(.R)) {
         gfx.hot_reload_shaders()
     }
 ```
@@ -23,13 +23,13 @@ Example:
 ```odin
 package main
 
-import "eldr"
-import gfx "eldr/graphics"
+import "ve"
+import gfx "ve/graphics"
 
 @(material)
 My_Material :: struct {
-    color:   eldr.vec4,
-    vector:  eldr.vec3,
+    color:   ve.vec4,
+    vector:  ve.vec3,
     texture: gfx.Texture_Handle,
 }
 ```
@@ -73,11 +73,11 @@ In development
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/eldr.git
-cd eldr
+git clone https://github.com/yourusername/ve.git
+cd ve
 
 unzip dependencies.zip
-make gen-eldr
+make gen-ve
 make gen
 make run
 ```

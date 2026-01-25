@@ -1,7 +1,7 @@
 package main
 
-import "../eldr"
-import gfx "../eldr/graphics"
+import ve ".."
+import gfx "../graphics"
 import "base:runtime"
 import "core:log"
 import "core:math"
@@ -47,8 +47,8 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 	gfx.camera_init(&data.camera)
 
 	// Load Model
-	data.texture_h = eldr.load_texture("./assets/room.png")
-	data.model = eldr.load_model("./assets/room.obj")
+	data.texture_h = ve.load_texture("./assets/room.png")
+	data.model = ve.load_model("./assets/room.obj")
 	data.pipeline_h = create_default_pipeline()
 
 	// Setup Material
@@ -60,9 +60,9 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 
 	// Setup Transform
 	gfx.init_gfx_trf(&data.transform)
-	eldr.trf_set_position(&data.transform, {0, -0.5, -1})
-	eldr.trf_rotate(&data.transform, {0, 1, 0}, -3.14 / 2)
-	eldr.trf_set_scale(&data.transform, 1)
+	ve.trf_set_position(&data.transform, {0, -0.5, -1})
+	ve.trf_rotate(&data.transform, {0, 1, 0}, -3.14 / 2)
+	ve.trf_set_scale(&data.transform, 1)
 
 	postprocessing_pipeline_h := create_postprocessing_pipeline()
 	pipe, ok_p_ := gfx.get_render_pipeline(postprocessing_pipeline_h)
@@ -97,8 +97,8 @@ postprocessing_scene_draw :: proc(s: ^Scene) {
 	gfx.set_full_viewport_scissor(frame)
 	postproc_mtrl, _ := gfx.get_material(data.postproc_mtrl)
 
-	mtrl_postprocessing_set_width(postproc_mtrl, cast(f32)eldr.get_screen_width())
-	mtrl_postprocessing_set_height(postproc_mtrl, cast(f32)eldr.get_screen_height())
+	mtrl_postprocessing_set_width(postproc_mtrl, cast(f32)ve.get_screen_width())
+	mtrl_postprocessing_set_height(postproc_mtrl, cast(f32)ve.get_screen_height())
 
 	surface, ok := gfx.get_surface(data.surface_h)
 	assert(ok)
@@ -123,7 +123,7 @@ postprocessing_scene_draw :: proc(s: ^Scene) {
 postprocessing_scene_destroy :: proc(s: ^Scene) {
 	data := cast(^Postprocessing_Scene_Data)s.data
 
-	eldr.unload_texture(data.texture_h)
+	ve.unload_texture(data.texture_h)
 	gfx.destroy_model(&data.model)
 	gfx.destroy_surface(data.surface_h)
 

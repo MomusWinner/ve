@@ -1,7 +1,7 @@
 package main
 
-import "../eldr"
-import gfx "../eldr/graphics"
+import ve ".."
+import gfx "../graphics"
 import "core:fmt"
 import "core:log"
 import "core:mem"
@@ -34,7 +34,7 @@ main :: proc() {
 	context.logger = log.create_console_logger()
 	defer log.destroy_console_logger(context.logger)
 
-	eldr.init(
+	ve.init(
 		nil,
 		fixed_update,
 		update,
@@ -51,7 +51,7 @@ main :: proc() {
 
 	current_scene.init(&current_scene)
 
-	eldr.run()
+	ve.run()
 
 	log.info("Successfuly close")
 }
@@ -60,12 +60,12 @@ fixed_update :: proc(user_data: rawptr) {
 }
 
 update :: proc(user_data: rawptr) {
-	if (eldr.is_key_pressed(.R)) {
+	if (ve.is_key_pressed(.R)) {
 		gfx.hot_reload_shaders()
 	}
 
-	if (eldr.is_key_pressed(.Escape)) {
-		eldr.close()
+	if (ve.is_key_pressed(.Escape)) {
+		ve.close()
 	}
 
 	current_scene.update(&current_scene)

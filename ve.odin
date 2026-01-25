@@ -1,4 +1,4 @@
-package eldr
+package ve
 
 import "base:runtime"
 import "core:c"
@@ -12,7 +12,7 @@ import stb_image "vendor:stb/image"
 import vk "vendor:vulkan"
 
 // @(private)  TODO: make private
-ctx: Eldr
+ctx: Ve
 
 @(private)
 g_err_ctx: runtime.Context
@@ -23,7 +23,7 @@ init :: proc(
 	update_proc: game_event_proc,
 	draw_proc: game_event_proc,
 	destroy_proc: game_event_proc,
-	info: Eldr_Info,
+	info: Ve_Info,
 	loc := #caller_location,
 ) {
 

@@ -1,4 +1,4 @@
-package eldr
+package ve
 
 import "common"
 

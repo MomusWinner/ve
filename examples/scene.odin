@@ -1,14 +1,5 @@
 package main
 
-import "../eldr"
-import gfx "../eldr/graphics"
-import "base:runtime"
-import "core:log"
-import "core:math"
-import "core:math/linalg/glsl"
-import "core:math/rand"
-import vk "vendor:vulkan"
-
 Scene :: struct {
 	data:    rawptr,
 	init:    proc(s: ^Scene),

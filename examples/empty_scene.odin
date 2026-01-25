@@ -1,7 +1,7 @@
 package main
 
-import "../eldr"
-import gfx "../eldr/graphics"
+import ve ".."
+import gfx "../graphics"
 import "base:runtime"
 import "core:log"
 import "core:math"
@@ -26,7 +26,7 @@ empty_scene_update :: proc(s: ^Scene) {
 }
 
 empty_scene_draw :: proc(s: ^Scene) {
-	e := &eldr.ctx
+	e := &ve.ctx
 
 	frame_data := gfx.begin_render()
 	// Begin gfx. ------------------------------
