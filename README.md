@@ -1,8 +1,8 @@
-# Eldr
+# ve 
 A small Vulkan Rendering Engine
 
 > [!WARNING]
-> **Eldr is currently under active development** and is not recommended for production use. The API may change significantly between versions.
+> **`ve` is currently under active development** and is not recommended for production use. The API may change significantly between versions.
 > 
 > **Platform Support Note:** Currently only Linux is supported. Windows support is planned for future releases.
 
