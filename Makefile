@@ -40,17 +40,17 @@ run-release: release
 .PHONY: gen
 gen:
 	@echo "Generating..."
-	odin run ./ve/tools/material_generator/ -- \
+	odin run ./tools/material_generator/ -- \
 		-outpute-glsl-dir:assets/shaders/ \
 		-src-dir:./examples \
-		-gfx-import:"gfx ../ve/graphics"
+		-gfx-import:"gfx ../graphics"
 
 .PHONY: init-ve
 gen-ve:
 	@echo "Generating..."
-	odin run ./ve/tools/material_generator/ -- \
+	odin run ./tools/material_generator/ -- \
 		-outpute-glsl-dir:assets/buildin/shaders/ \
-		-src-dir:./ve/graphics/
+		-src-dir:./graphics/
 
 .PHONY: clean
 clean:
