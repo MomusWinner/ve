@@ -64,7 +64,7 @@ surface_add_color_attachment :: proc(
 
 	color_attachment := Surface_Color_Attachment{}
 	if surface.sample_count == ._1 {
-		color_res := _create_surface_color_resolve_resource(w, h, surface.anisotropy, ctx.swapchain.format.format)
+		color_res := _create_surface_color_resolve_resource(w, h, surface.anisotropy, ctx.swapchain.color_format.format)
 
 		color_attachment.texture_h = store_texture(color_res, loc)
 
@@ -79,8 +79,8 @@ surface_add_color_attachment :: proc(
 			clearValue = vk.ClearValue{color = {float32 = clear_value}},
 		}
 	} else {
-		msaa := _create_surface_color_resource(w, h, ctx.swapchain.format.format, surface.sample_count)
-		resolve := _create_surface_color_resolve_resource(w, h, surface.anisotropy, ctx.swapchain.format.format)
+		msaa := _create_surface_color_resource(w, h, ctx.swapchain.color_format.format, surface.sample_count)
+		resolve := _create_surface_color_resolve_resource(w, h, surface.anisotropy, ctx.swapchain.color_format.format)
 
 		color_attachment.texture_h = store_texture(resolve)
 		color_attachment.msaa_texture = msaa
@@ -748,13 +748,23 @@ _surface_resize_color_attachment :: proc(width: u32, height: u32, surface: ^Surf
 
 	msaa, has_msaa := color_attachment.msaa_texture.?
 
-	resolve := _create_surface_color_resolve_resource(width, height, surface.anisotropy, ctx.swapchain.format.format)
+	resolve := _create_surface_color_resolve_resource(
+		width,
+		height,
+		surface.anisotropy,
+		ctx.swapchain.color_format.format,
+	)
 	update_texture_h(color_attachment.texture_h, resolve)
 	color_attachment.info.imageView = resolve.view
 
 	if has_msaa {
 		destroy_texture(&msaa)
-		new_msaa := _create_surface_color_resource(width, height, ctx.swapchain.format.format, surface.sample_count)
+		new_msaa := _create_surface_color_resource(
+			width,
+			height,
+			ctx.swapchain.color_format.format,
+			surface.sample_count,
+		)
 		color_attachment.msaa_texture = new_msaa
 		color_attachment.info.imageView = new_msaa.view
 		color_attachment.info.resolveImageView = resolve.view

@@ -28,6 +28,34 @@ _recreate_swapchain :: proc() {
 	_swapchain_recreate(ctx.swapchain)
 }
 
+@(private)
+_swapchaint_get_color_attachment_info :: proc(clear_color: vec4) -> vk.RenderingAttachmentInfo {
+	vk_clear_color := vk.ClearValue {
+		color = {float32 = clear_color},
+	}
+
+	color_attachment_info := vk.RenderingAttachmentInfo {
+		sType              = .RENDERING_ATTACHMENT_INFO,
+		pNext              = nil,
+		imageLayout        = .ATTACHMENT_OPTIMAL,
+		resolveImageLayout = .COLOR_ATTACHMENT_OPTIMAL,
+		loadOp             = .CLEAR,
+		storeOp            = .STORE,
+		clearValue         = vk_clear_color,
+	}
+
+	msaa_color_texture, has_msaa_color := ctx.swapchain.msaa_color_texture.?
+
+	if has_msaa_color {
+		color_attachment_info.imageView = msaa_color_texture.view
+		color_attachment_info.resolveImageView = ctx.swapchain.image_views[ctx.swapchain.image_index]
+		color_attachment_info.resolveMode = {.AVERAGE_KHR}
+	} else {
+		color_attachment_info.imageView = ctx.swapchain.image_views[ctx.swapchain.image_index]}
+
+	return color_attachment_info
+}
+
 @(private = "file")
 @(require_results)
 _swapchain_new :: proc(sample_count: Sample_Count_Flag) -> ^Swap_Chain {
@@ -77,7 +105,7 @@ _swapchain_new :: proc(sample_count: Sample_Count_Flag) -> ^Swap_Chain {
 
 	swapchain := new(Swap_Chain)
 	swapchain.swapchain = vk_swapchain
-	swapchain.format = surface_format
+	swapchain.color_format = surface_format
 	swapchain.extent = extent
 	swapchain.sample_count = sample_count
 	_swapchain_setup_images(swapchain)
@@ -88,8 +116,10 @@ _swapchain_new :: proc(sample_count: Sample_Count_Flag) -> ^Swap_Chain {
 
 @(private = "file")
 _swapchain_setup :: proc(swapchain: ^Swap_Chain, command_buffer: vk.CommandBuffer) {
-	_swapchain_setup_color_resource(swapchain)
-	_swapchain_setupt_depth_buffer(swapchain, command_buffer)
+	if swapchain.sample_count != ._1 {
+		_swapchain_setup_msaa_color_texture(swapchain)
+	}
+	_swapchain_setupt_depth_texture(swapchain, command_buffer)
 }
 
 @(private = "file")
@@ -108,7 +138,10 @@ _swapchain_recreate :: proc(swapchain: ^Swap_Chain) {
 
 @(private = "file")
 _swapchain_destroy :: proc(swapchain: ^Swap_Chain) {
-	destroy_texture(&swapchain.color_image)
+	msaa_color_texture, has_color_texture := swapchain.msaa_color_texture.?
+	if has_color_texture {
+		destroy_texture(&msaa_color_texture)
+	}
 	destroy_texture(&swapchain.depth_image)
 
 	for sem in swapchain.render_finished_semaphores {
@@ -129,8 +162,8 @@ _swapchain_destroy :: proc(swapchain: ^Swap_Chain) {
 }
 
 @(private = "file")
-_swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
-	color_format := swapchain.format.format
+_swapchain_setup_msaa_color_texture :: proc(swapchain: ^Swap_Chain) {
+	color_format := swapchain.color_format.format
 
 	image, allocation, allocation_info := _create_image(
 		swapchain.extent.width,
@@ -146,8 +179,8 @@ _swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
 
 	view := _create_image_view(image, color_format, {.COLOR}, 1)
 
-	swapchain.color_image = Texture {
-		name            = "swapchain_image",
+	texture := Texture {
+		name            = "swapchain_msaa_color_texture",
 		image           = image,
 		format          = color_format,
 		view            = view,
@@ -155,12 +188,14 @@ _swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
 		allocation_info = allocation_info,
 	}
 
+	swapchain.msaa_color_texture = texture
+
 	s := begin_single_cmd()
 	_transition_image_layout(
 		s.cmd,
-		ctx.swapchain.color_image.image,
+		texture.image,
 		{.COLOR},
-		ctx.swapchain.format.format,
+		ctx.swapchain.color_format.format,
 		.UNDEFINED,
 		.COLOR_ATTACHMENT_OPTIMAL,
 		1,
@@ -169,7 +204,7 @@ _swapchain_setup_color_resource :: proc(swapchain: ^Swap_Chain) {
 }
 
 @(private = "file")
-_swapchain_setupt_depth_buffer :: proc(swapchain: ^Swap_Chain, command_buffer: vk.CommandBuffer) {
+_swapchain_setupt_depth_texture :: proc(swapchain: ^Swap_Chain, command_buffer: vk.CommandBuffer) {
 	format := _find_depth_format(ctx.vulkan_state.physical_device)
 	image, allocation, allocation_info := _create_image(
 		swapchain.extent.width,
@@ -207,7 +242,7 @@ _swapchain_setup_images :: proc(swapchain: ^Swap_Chain) {
 	must(vk.GetSwapchainImagesKHR(ctx.vulkan_state.device, swapchain.swapchain, &count, raw_data(swapchain.images)))
 
 	for image, i in swapchain.images {
-		swapchain.image_views[i] = _create_image_view(image, swapchain.format.format, {.COLOR}, 1)
+		swapchain.image_views[i] = _create_image_view(image, swapchain.color_format.format, {.COLOR}, 1)
 	}
 }
 

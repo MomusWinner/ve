@@ -200,32 +200,17 @@ end_render :: proc(frame_data: Frame_Data, sync_data: Sync_Data = {}) {
 }
 
 begin_draw :: proc(frame: Frame_Data, clear_color: vec4 = {0.0, 0.0, 0.0, 1.0}) -> Frame_Data {
-	clear_color := vk.ClearValue {
-		color = {float32 = clear_color},
-	}
-
 	_transition_image_layout(
 		frame.cmd,
 		ctx.swapchain.images[ctx.swapchain.image_index],
 		{.COLOR},
-		ctx.swapchain.format.format,
+		ctx.swapchain.color_format.format,
 		.UNDEFINED,
 		.COLOR_ATTACHMENT_OPTIMAL,
 		1,
 	)
 
-	color_attachment_info := vk.RenderingAttachmentInfo {
-		sType              = .RENDERING_ATTACHMENT_INFO,
-		pNext              = nil,
-		imageView          = ctx.swapchain.color_image.view,
-		imageLayout        = .ATTACHMENT_OPTIMAL,
-		resolveMode        = {.AVERAGE_KHR},
-		resolveImageView   = ctx.swapchain.image_views[ctx.swapchain.image_index],
-		resolveImageLayout = .COLOR_ATTACHMENT_OPTIMAL,
-		loadOp             = .CLEAR,
-		storeOp            = .STORE,
-		clearValue         = clear_color,
-	}
+	color_attachment_info := _swapchaint_get_color_attachment_info(clear_color)
 
 	depth_stencil_clear_value := vk.ClearValue {
 		depthStencil = {1, 0},
@@ -261,7 +246,7 @@ begin_draw :: proc(frame: Frame_Data, clear_color: vec4 = {0.0, 0.0, 0.0, 1.0}) 
 		width        = ctx.swapchain.extent.width,
 		height       = ctx.swapchain.extent.height,
 	}
-	sm.push(&frame.surface_info.color_formats, ctx.swapchain.color_image.format)
+	sm.push(&frame.surface_info.color_formats, ctx.swapchain.color_format.format)
 
 	return frame
 }
@@ -273,7 +258,7 @@ end_draw :: proc(frame: Frame_Data) {
 		frame.cmd,
 		ctx.swapchain.images[ctx.swapchain.image_index],
 		{.COLOR},
-		ctx.swapchain.format.format,
+		ctx.swapchain.color_format.format,
 		.COLOR_ATTACHMENT_OPTIMAL,
 		.PRESENT_SRC_KHR,
 		1,

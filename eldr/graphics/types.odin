@@ -268,10 +268,10 @@ Pipeline_Manager :: struct {
 
 Swap_Chain :: struct {
 	swapchain:                  vk.SwapchainKHR,
-	format:                     vk.SurfaceFormatKHR,
+	color_format:               vk.SurfaceFormatKHR,
 	extent:                     vk.Extent2D,
 	sample_count:               Sample_Count_Flag,
-	color_image:                Texture,
+	msaa_color_texture:         Maybe(Texture),
 	depth_image:                Texture,
 	image_index:                u32,
 	images:                     []vk.Image,
