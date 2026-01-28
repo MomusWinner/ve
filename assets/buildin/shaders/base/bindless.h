@@ -39,35 +39,19 @@ layout( push_constant ) uniform constants {
 	uint material;
 } PushConstants;
 
-
-// layout(set = 1, binding = 0) uniform DrawParameters {
-//   uint meshTransforms;
-//   uint pointLights;
-//   uint camera;
-//   // Don't forget the padding
-//   uint texture;
-// } uDrawParameters;
-
-// RegisterUniform(Transform, {
-//     mat4 model;
-//     mat4 view;
-//     mat4 proj;
-// });
-//
-// #define getTransform() GetResource(Transform, 0) // TODO
-
-
 RegisterUniform(Model, {
-    mat4 model;
+	mat4 model;
 });
 
 #define getModel() GetResource(Model, PushConstants.model)
 
 RegisterUniform(Camera, {
-    mat4 view;
-    mat4 projection;
+	mat4 view;
+	mat4 projection;
+	vec3 position;
+	float pad0;
 });
 
-#define getCameraByHandle(handle) GetResource(Camera, handle)
+#define getCameraByIndex(index) GetResource(Camera, index)
 
-#define getCamera() getCameraByHandle(PushConstants.camera)
+#define getCamera() getCameraByIndex(PushConstants.camera)

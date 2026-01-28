@@ -303,15 +303,19 @@ Physical_Device_Features :: struct {
 Camera_UBO :: struct {
 	view:       mat4,
 	projection: mat4,
+	position:   vec3,
 }
 
-Camera_Type :: enum {
+Camera_Projection_Type :: enum {
 	Perspective,
 	Orthographic,
+	Custom,
 }
 
+Camera_Custom_Projection_Proc :: #type proc "c" (user_data: rawptr, camera: ^Camera, aspect: f32) -> mat4
+
 Camera :: struct {
-	type:        Camera_Type,
+	type:        Camera_Projection_Type,
 	position:    vec3,
 	zoom:        vec3,
 	target:      vec3,
@@ -321,6 +325,10 @@ Camera :: struct {
 	far:         f32,
 	dirty:       bool,
 	last_aspect: f32,
+	custom:      struct {
+		projection: Camera_Custom_Projection_Proc,
+		user_data:  rawptr,
+	},
 	_buffer_h:   Buffer_Handle, // Camera_UBO
 }
 

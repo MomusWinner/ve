@@ -1,8 +1,8 @@
 package graphics
 
+import vemath "../math"
 import "core:log"
-import "core:math/linalg/glsl"
-import "core:math/linalg/hlsl"
+import lin "core:math/linalg/glsl"
 import vk "vendor:vulkan"
 
 @(private)
@@ -12,14 +12,42 @@ DEFAULT_NEAR :: 0.01
 @(private)
 DEFAULT_FAR :: 100
 
-camera_init :: proc(camera: ^Camera, type: Camera_Type = .Perspective, loc := #caller_location) {
+// Sets a custom projection for the camera.
+// NOTE: The caller is responsible for cleaning up user_data.
+camera_init_custom :: proc(
+	camera: ^Camera,
+	user_data: rawptr,
+	projection: Camera_Custom_Projection_Proc,
+	loc := #caller_location,
+) {
 	assert_gfx_ctx(loc)
 	assert_not_nil(camera, loc)
+	assert(projection != nil, loc = loc)
 
 	camera.fov = DEFAULT_FOV
 	camera.near = DEFAULT_NEAR
 	camera.far = DEFAULT_FAR
-	camera.zoom = vec3{1, 1, 1}
+	camera.zoom = 1
+	camera.type = .Custom
+	camera.dirty = true
+
+	camera.custom.projection = projection
+	camera.custom.user_data = user_data
+}
+
+camera_init :: proc(camera: ^Camera, type: Camera_Projection_Type = .Perspective, loc := #caller_location) {
+	assert_gfx_ctx(loc)
+	assert_not_nil(camera, loc)
+	assert(
+		type == .Custom,
+		"Cannot use camera_init for custom projection cameras. Use camera_init_custom instead.",
+		loc,
+	)
+
+	camera.fov = DEFAULT_FOV
+	camera.near = DEFAULT_NEAR
+	camera.far = DEFAULT_FAR
+	camera.zoom = 1
 	camera.type = type
 	camera.dirty = true
 
@@ -27,16 +55,22 @@ camera_init :: proc(camera: ^Camera, type: Camera_Type = .Perspective, loc := #c
 	camera._buffer_h = store_buffer(buffer, loc)
 }
 
+camera_get_up :: proc(camera: ^Camera, loc := #caller_location) -> vec3 {
+	assert_not_nil(camera, loc)
+
+	return lin.normalize_vec3(camera.up)
+}
+
 camera_get_forward :: proc(camera: ^Camera, loc := #caller_location) -> vec3 {
 	assert_not_nil(camera, loc)
 
-	return glsl.normalize_vec3(camera.target - camera.position)
+	return lin.normalize_vec3(camera.target - camera.position)
 }
 
 camera_get_right :: proc(camera: ^Camera, loc := #caller_location) -> vec3 {
 	assert_not_nil(camera, loc)
 
-	return glsl.normalize(glsl.cross(camera_get_forward(camera), camera.up))
+	return lin.normalize(lin.cross(camera_get_forward(camera), camera_get_up(camera)))
 }
 
 camera_get_left :: proc(camera: ^Camera, loc := #caller_location) -> vec3 {
@@ -45,22 +79,50 @@ camera_get_left :: proc(camera: ^Camera, loc := #caller_location) -> vec3 {
 	return -camera_get_right(camera)
 }
 
+camera_move :: proc(camera: ^Camera, translation: vec3) {
+	camera.position += translation
+	camera.target += translation
+
+	camera.dirty = true
+}
+
+camera_set_position :: proc(camera: ^Camera, position: vec3) {
+	forward := camera_get_forward(camera)
+	camera.position = position
+	camera.target = camera.position + forward
+
+	camera.dirty = true
+}
+
+camera_set_position_only :: proc(camera: ^Camera, position: vec3) {
+	camera.position = position
+
+	camera.dirty = true
+}
+
+camera_set_target_only :: proc(camera: ^Camera, position: vec3) {
+	camera.target = position
+
+	camera.dirty = true
+}
+
 camera_set_yaw :: proc(camera: ^Camera, angle: f32, loc := #caller_location) {
 	assert_not_nil(camera, loc)
 
 	target_position := camera.target - camera.position
-	trans := glsl.mat4Rotate(camera.up, glsl.radians(angle))
+	trans := lin.mat4Rotate(camera_get_up(camera), angle)
 	target := trans * vec4{target_position.x, target_position.y, target_position.z, 0}
 	camera.target = target.xyz
 
 	camera.dirty = true
 }
 
+// Rotates the camera around its right vector
 camera_set_pitch :: proc(camera: ^Camera, angle: f32, loc := #caller_location) {
 	assert_not_nil(camera, loc)
 
 	target_position := camera.target - camera.position
-	trans := glsl.mat4Rotate(camera_get_right(camera), glsl.radians(angle))
+	trans := lin.mat4Rotate(camera_get_right(camera), angle)
 	target := trans * vec4{target_position.x, target_position.y, target_position.z, 0}
 	camera.target = target.xyz
 
@@ -71,7 +133,7 @@ camera_set_roll :: proc(camera: ^Camera, angle: f32, loc := #caller_location) {
 	assert_not_nil(camera, loc)
 
 	target_position := camera.target - camera.position
-	trans := glsl.mat4Rotate(camera_get_forward(camera), glsl.radians(angle))
+	trans := lin.mat4Rotate(camera_get_forward(camera), angle)
 	target := trans * vec4{target_position.x, target_position.y, target_position.z, 0}
 	camera.target = target.xyz
 
@@ -90,24 +152,25 @@ camera_get_view :: proc(camera: ^Camera, loc := #caller_location) -> mat4 {
 	assert_not_nil(camera, loc)
 
 	return(
-		glsl.mat4LookAt(camera.position, camera.position + camera_get_forward(camera), camera.up) *
-		glsl.mat4Scale(camera.zoom) \
+		lin.mat4LookAt(camera.position, camera.position + camera_get_forward(camera), camera_get_up(camera)) *
+		lin.mat4Scale(camera.zoom) \
 	)
 }
 
 camera_get_projection :: proc(camera: ^Camera, aspect: f32, loc := #caller_location) -> mat4 {
 	assert_not_nil(camera, loc)
-
 	projection: mat4
 
 	switch camera.type {
 	case .Perspective:
-		projection = perspective(glsl.radians_f32(camera.fov), aspect, camera.near, camera.far)
-
+		projection = vemath.perspective(lin.radians_f32(camera.fov), aspect, camera.near, camera.far)
 	case .Orthographic:
 		top := camera.fov / 2.0
 		right := top * aspect
-		projection = ortho(-right, right, -top, top, camera.near, camera.far)
+		projection = vemath.ortho(-right, right, -top, top, camera.near, camera.far)
+	case .Custom:
+		assert(camera.custom.projection != nil)
+		projection = camera.custom.projection(camera.custom.user_data, camera, aspect)
 	}
 
 	return projection
@@ -131,34 +194,10 @@ _camera_get_buffer :: proc(camera: ^Camera, aspect: f32, loc := #caller_location
 	camera_ubo := Camera_UBO {
 		view       = view,
 		projection = projection,
+		position   = camera.position,
 	}
 	fill_buffer(buffer, size_of(Camera_UBO), &camera_ubo)
 	camera.dirty = false
 
 	return camera._buffer_h
-}
-
-// Right hand and zero to one
-@(require_results)
-ortho :: proc(left, right, bottom, top, near, far: f32) -> (m: mat4) {
-	m[0, 0] = 2 / (right - left)
-	m[1, 1] = -2 / (top - bottom)
-	m[2, 2] = -1 / (far - near)
-	m[0, 3] = -(right + left) / (right - left)
-	m[1, 3] = -(top + bottom) / (top - bottom)
-	m[2, 3] = -near / (far - near)
-	m[3, 3] = 1
-	return m
-}
-
-// Right hand and zero to one
-@(require_results)
-perspective :: proc "c" (fovy, aspect, near, far: f32) -> (m: mat4) {
-	tan_half_fovy := glsl.tan(0.5 * fovy)
-	m[0, 0] = 1 / (aspect * tan_half_fovy)
-	m[1, 1] = -1 / (tan_half_fovy)
-	m[2, 2] = far / (near - far)
-	m[3, 2] = -1
-	m[2, 3] = -far * near / (far - near)
-	return
 }
