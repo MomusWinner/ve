@@ -51,7 +51,7 @@ model_scene_init :: proc(s: ^Scene) {
 	append(&data.model.mesh_material, 0)
 
 	// Setup Transform
-	gfx.init_gfx_trf(&data.transform)
+	ve.init_trf(&data.transform)
 	ve.trf_set_position(&data.transform, {0, -0.5, -1})
 	ve.trf_set_scale(&data.transform, {0.5, 0.5, 0.5})
 

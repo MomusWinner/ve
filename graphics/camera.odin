@@ -39,7 +39,7 @@ camera_init :: proc(camera: ^Camera, type: Camera_Projection_Type = .Perspective
 	assert_gfx_ctx(loc)
 	assert_not_nil(camera, loc)
 	assert(
-		type == .Custom,
+		type != .Custom,
 		"Cannot use camera_init for custom projection cameras. Use camera_init_custom instead.",
 		loc,
 	)

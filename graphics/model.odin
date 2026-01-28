@@ -1,5 +1,6 @@
 package graphics
 
+import "../common"
 import sm "core:container/small_array"
 import "core:log"
 import vk "vendor:vulkan"
@@ -64,13 +65,11 @@ draw_mesh :: proc(
 	pipeline, ok := get_render_pipeline(material.pipeline_h)
 	assert(ok, "Couldn't get pipeline")
 
-	_trf_apply(transform)
-
 	g_pipeline := cmd_bind_material(frame_data, material, loc)
 
 	const := Push_Constant {
+		model    = common.trf_get_matrix(transform),
 		camera   = _camera_get_buffer(camera, cast(f32)frame_data.surface_info.width / cast(f32)frame_data.surface_info.height).index,
-		model    = transform.buffer_h.index,
 		material = material.buffer_h.index,
 	}
 

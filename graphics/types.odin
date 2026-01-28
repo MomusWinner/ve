@@ -247,10 +247,11 @@ Compute_Pipeline :: struct {
 }
 
 Push_Constant :: struct {
+	model:    mat4,
 	camera:   u32,
-	model:    u32,
 	material: u32,
 	pad0:     u32,
+	pad1:     u32,
 }
 
 Pipeline_Handle :: distinct hm.Handle

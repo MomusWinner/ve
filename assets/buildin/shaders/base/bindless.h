@@ -34,16 +34,18 @@ layout(set = BindlessDescriptorSet, binding = BindlessSamplerBinding) \
 
 
 layout( push_constant ) uniform constants {
+	mat4 model;
 	uint camera;
-	uint model;
 	uint material;
+	uint pad0;
+	uint pad1;
 } PushConstants;
 
 RegisterUniform(Model, {
 	mat4 model;
 });
 
-#define getModel() GetResource(Model, PushConstants.model)
+#define getModel() PushConstants.model
 
 RegisterUniform(Camera, {
 	mat4 view;

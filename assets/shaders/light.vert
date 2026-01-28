@@ -22,14 +22,14 @@ const mat4 biasMat = mat4(
 
 
 void main() {
-	gl_Position = getCamera().projection * getCamera().view * getModel().model * vec4(inPosition, 1.0);
+	gl_Position = getCamera().projection * getCamera().view * getModel() * vec4(inPosition, 1.0);
 
 	fragTexCoord = inTexCoord;
 	fragColor = inColor;
-	fragNormal = mat3(transpose(inverse(getModel().model))) * inNormal;
-  fragPos = vec3(getModel().model * vec4(inPosition, 1.0f));
+	fragNormal = mat3(transpose(inverse(getModel()))) * inNormal;
+  fragPos = vec3(getModel() * vec4(inPosition, 1.0f));
 
 	mat4 projection = getCameraByIndex(getUboLight(getMtrlLight().light_data).camera).projection;
 	mat4 view = getCameraByIndex(getUboLight(getMtrlLight().light_data).camera).view;
-	fragPosLightSpace = (biasMat * projection * view * getModel().model) * vec4(inPosition, 1.0f);
+	fragPosLightSpace = (biasMat * projection * view * getModel()) * vec4(inPosition, 1.0f);
 }

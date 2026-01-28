@@ -59,7 +59,7 @@ postprocessing_scene_init :: proc(s: ^Scene) {
 	append(&data.model.mesh_material, 0)
 
 	// Setup Transform
-	gfx.init_gfx_trf(&data.transform)
+	ve.init_trf(&data.transform)
 	ve.trf_set_position(&data.transform, {0, -0.5, -1})
 	ve.trf_rotate(&data.transform, {0, 1, 0}, -3.14 / 2)
 	ve.trf_set_scale(&data.transform, 1)

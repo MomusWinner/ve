@@ -107,15 +107,15 @@ light_scene_init :: proc(s: ^Scene) {
 	data.depth_only_mtrl = gfx.create_mtrl_empty(create_depth_only_pipeline())
 
 	// Setup Transform
-	gfx.init_gfx_trf(&data.transform)
+	ve.init_trf(&data.transform)
 	ve.trf_set_position(&data.transform, {0, 1, 0})
 
-	gfx.init_gfx_trf(&data.ground_transform)
+	ve.init_trf(&data.ground_transform)
 	ve.trf_set_position(&data.ground_transform, {0, 0, 0})
 	ve.trf_set_scale(&data.ground_transform, 100)
 	ve.trf_rotate(&data.ground_transform, {1, 0, 0}, 3.14 / 2)
 
-	gfx.init_gfx_trf(&data.square_trf)
+	ve.init_trf(&data.square_trf)
 	ve.trf_set_position(&data.square_trf, {-0.7, -0.7, 0})
 	ve.trf_set_scale(&data.square_trf, 0.3)
 

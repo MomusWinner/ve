@@ -2,6 +2,7 @@
 
 package graphics
 
+import "../common"
 import "core:log"
 
 @(private)
@@ -87,14 +88,11 @@ _destroy_temp_material_pool :: proc(pool: ^Temp_Material_Pool) {
 _init_temp_transform_pool :: proc(pool: ^Temp_Transform_Pool, size: int, allocator := context) {
 	_init_temp_pool(pool, size)
 	for i in 0 ..< size {
-		init_gfx_trf(&pool.resources[i])
+		common.init_trf(&pool.resources[i])
 	}
 }
 
 @(private)
 _destroy_temp_transform_pool :: proc(pool: ^Temp_Transform_Pool) {
-	for i in 0 ..< len(pool.resources) {
-		destroy_trf(&pool.resources[i])
-	}
 	_destroy_temp_pool(pool)
 }

@@ -84,7 +84,6 @@ draw_square :: proc(frame_data: Frame_Data, camera: ^Camera, position: vec3, sca
 	transform := _temp_pool_acquire_transform()
 	common.trf_set_position(&transform, position)
 	common.trf_set_scale(&transform, scale)
-	_trf_apply(&transform)
 
 	draw_model(frame_data, model, camera, &transform)
 }
@@ -108,7 +107,6 @@ draw_square_texture :: proc(
 	transform := _temp_pool_acquire_transform()
 	common.trf_set_position(&transform, position)
 	common.trf_set_scale(&transform, scale)
-	_trf_apply(&transform)
 
 	draw_model(frame_data, model, camera, &transform)
 }

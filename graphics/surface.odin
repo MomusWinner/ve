@@ -1,5 +1,6 @@
 package graphics
 
+import "../common/"
 import hm "../handle_map/"
 import "base:runtime"
 import sm "core:container/small_array"
@@ -469,7 +470,7 @@ _surface_init_fit_screen :: proc(
 	surface.width = get_device_width()
 	surface.height = get_device_height()
 
-	init_gfx_trf(&surface.transform)
+	common.init_trf(&surface.transform)
 
 	surface.sample_count = sample_count
 	surface.anisotropy = anisotropy
@@ -490,7 +491,7 @@ _surface_init_with_size :: proc(
 	surface.width = width
 	surface.height = height
 
-	init_gfx_trf(&surface.transform)
+	common.init_trf(&surface.transform)
 
 	surface.sample_count = sample_count
 	surface.anisotropy = anisotropy

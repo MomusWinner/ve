@@ -11,7 +11,7 @@ layout(location = 0) out vec2 fragTexCoord;
 layout(location = 1) out vec4 fragColor;
 
 void main() {
-	gl_Position = getCamera().projection * getCamera().view * getModel().model * vec4(inPosition, 1.0);
+	gl_Position = getCamera().projection * getCamera().view * getModel() * vec4(inPosition, 1.0);
 
 	fragTexCoord = inTexCoord;
 	fragColor = getBaseMaterial().color;

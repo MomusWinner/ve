@@ -154,7 +154,7 @@ create_text :: proc(
 	assert_not_nil(font, loc)
 
 	trf := Gfx_Transform{}
-	init_gfx_trf(&trf)
+	common.init_trf(&trf)
 	common.trf_set_position(&trf, start_position)
 	common.trf_set_scale(&trf, vec3{1, 1, 1} * size)
 
@@ -211,8 +211,6 @@ draw_text :: proc(text: ^Text, frame_data: Frame_Data, camera: ^Camera, loc := #
 	assert_gfx_ctx(loc)
 	assert_not_nil(text, loc)
 
-	_trf_apply(&text.transform)
-
 	material, mtrl_ok := get_material(text.material)
 	assert(mtrl_ok, loc = loc)
 
@@ -221,8 +219,8 @@ draw_text :: proc(text: ^Text, frame_data: Frame_Data, camera: ^Camera, loc := #
 	g_pipeline := cmd_bind_material(frame_data, material)
 
 	const := Push_Constant {
+		model    = common.trf_get_matrix(text.transform),
 		camera   = _camera_get_buffer(camera, get_screen_aspect()).index,
-		model    = text.transform.buffer_h.index,
 		material = material.buffer_h.index,
 	}
 	cmd_push_constants(frame_data, g_pipeline, &const)
@@ -235,7 +233,6 @@ destroy_text :: proc(text: ^Text, loc := #caller_location) {
 	assert_not_nil(text, loc)
 
 	destroy_buffer(&text.vbo)
-	destroy_trf(&text.transform)
 }
 
 @(private)
