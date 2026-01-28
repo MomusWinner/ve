@@ -1,7 +1,6 @@
 package main
 
 import ve ".."
-import "core:math/linalg/glsl"
 
 vec2 :: ve.vec2
 vec3 :: ve.vec3
