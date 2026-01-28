@@ -1,7 +1,6 @@
 #version 450
 
 #include "gen_types.h"
-#include "buildin:defines/helper.h"
 
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 1) in vec4 fragColor;
@@ -62,7 +61,7 @@ void main() {
 	float diff = max(dot(lightDir, normal), 0.0);
 	vec3 diffuse = diff * lightColor;
 	// specular
-	vec3 viewDir = normalize(getMtrlLight().view_pos - fragPos);
+	vec3 viewDir = normalize(getCamera().position - fragPos);
 	float spec = 0.0;
 	vec3 halfwayDir = normalize(lightDir + viewDir);
 	spec = pow(max(dot(normal, halfwayDir), 0.0), 64.0);

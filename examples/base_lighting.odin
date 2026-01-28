@@ -2,11 +2,13 @@ package main
 
 import ve ".."
 import gfx "../graphics"
+import l "../math"
+import vemath "../math"
 import "base:runtime"
 import "core:log"
 import "core:math"
-import "core:math/linalg/glsl"
-import "core:math/rand"
+import lin "core:math/linalg/glsl"
+import "core:math/noise"
 import "core:time"
 
 @(uniform_buffer)
@@ -23,7 +25,6 @@ Light_Material :: struct {
 	ambient:    vec3,
 	specular:   vec3,
 	light_data: gfx.Buffer_Handle,
-	view_pos:   vec3,
 }
 
 Lighting_Scene_Data :: struct {
@@ -94,7 +95,6 @@ light_scene_init :: proc(s: ^Scene) {
 	mtrl_light_set_diffuse(light_material, {0.29, 0.478, 0.588})
 	mtrl_light_set_ambient(light_material, 0.1)
 	mtrl_light_set_light_data(light_material, light_data.buffer_h)
-	mtrl_light_set_view_pos(light_material, data.camera.position)
 
 	ubo_light_set_camera(light_data, data.l_camera._buffer_h)
 	ubo_light_set_direction(light_data, {0, -1, 0})
@@ -139,19 +139,22 @@ light_scene_update :: proc(s: ^Scene) {
 	camera: ^gfx.Camera
 	camera = &data.l_camera
 
-	if ve.is_key_down(.W) {
+	if ve.is_key_down(.Up) {
 		camera.position.z += ve.get_delta_time() * speed
 	}
-	if ve.is_key_down(.S) {
+	if ve.is_key_down(.Down) {
 		camera.position.z -= ve.get_delta_time() * speed
 	}
-	if ve.is_key_down(.A) {
+	if ve.is_key_down(.Left) {
 		camera.position.x += ve.get_delta_time() * speed
 	}
-	if ve.is_key_down(.D) {
+	if ve.is_key_down(.Right) {
 		camera.position.x -= ve.get_delta_time() * speed
 	}
 	camera.dirty = true
+
+	ve.cursor_disable()
+	ve.camera_update_simple_controller(&data.camera)
 }
 
 light_scene_draw :: proc(s: ^Scene) {

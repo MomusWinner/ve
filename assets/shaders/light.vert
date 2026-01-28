@@ -29,7 +29,7 @@ void main() {
 	fragNormal = mat3(transpose(inverse(getModel().model))) * inNormal;
   fragPos = vec3(getModel().model * vec4(inPosition, 1.0f));
 
-	mat4 projection = getCameraByHandle(getUboLight(getMtrlLight().light_data).camera).projection;
-	mat4 view = getCameraByHandle(getUboLight(getMtrlLight().light_data).camera).view;
+	mat4 projection = getCameraByIndex(getUboLight(getMtrlLight().light_data).camera).projection;
+	mat4 view = getCameraByIndex(getUboLight(getMtrlLight().light_data).camera).view;
 	fragPosLightSpace = (biasMat * projection * view * getModel().model) * vec4(inPosition, 1.0f);
 }
