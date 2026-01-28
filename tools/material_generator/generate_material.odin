@@ -111,7 +111,7 @@ generate_glsl :: proc(path: string, structs: []Struct, loc := #caller_location) 
 		error("Failed opening '%s' folder", path)
 	}
 
-	fmt.fprintln(f, "#include \"buildin:defines/bindless.h\"\n")
+	fmt.fprintln(f, "#include \"buildin:base/bindless.h\"\n")
 
 	for s in structs {
 		glsl_struct_name, ok := strings.replace_all(s.name, "_", "")
@@ -137,6 +137,8 @@ generate_glsl :: proc(path: string, structs: []Struct, loc := #caller_location) 
 			)
 		case .Uniform_Buffer:
 			func_name, r_ok := strings.replace_all(glsl_struct_name, "Ubo", "")
+			func_name, r_ok = strings.replace_all(func_name, "UBO", "")
+
 			fmt.fprintfln(f, "#define getUbo{1:s}(index) GetResource({0:s}, index)", glsl_struct_name, func_name)
 		}
 	}
