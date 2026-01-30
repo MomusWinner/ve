@@ -442,6 +442,7 @@ _get_sample_count :: proc(limits: vk.PhysicalDeviceLimits) -> vk.SampleCountFlag
 	return ._1
 }
 
+@(private)
 _init_limits :: proc() {
 	vk_limits := ctx.vulkan_state.physical_device_property.limits
 
@@ -449,6 +450,10 @@ _init_limits :: proc() {
 		max_sampler_anisotropy = vk_limits.maxSamplerAnisotropy,
 		max_sample_count       = _get_sample_count(vk_limits),
 	}
+}
+
+get_limits :: proc() -> Graphics_Limits {
+	return ctx.limits
 }
 
 @(private = "file")

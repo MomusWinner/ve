@@ -25,6 +25,7 @@ Image :: common.Image
 
 Sample_Count_Flags :: vk.SampleCountFlags
 Sample_Count_Flag :: vk.SampleCountFlag
+Sampler :: vk.Sampler
 Semaphore :: vk.Semaphore
 Vertex_Input_Binding_Description :: vk.VertexInputBindingDescription
 Vertex_Input_Attribute_Description :: vk.VertexInputAttributeDescription
@@ -91,6 +92,43 @@ Graphics :: struct {
 	render_started:            bool,
 	deffered_destructor:       ^Deferred_Destructor,
 	buildin:                   ^Buildin_Resource,
+}
+
+Sampler_Border_Color :: enum {
+	Transparent_Black = 0,
+	Opaque_Black      = 2,
+	Opaque_White      = 4,
+}
+
+Sampler_Filter :: enum {
+	Nearest = 0,
+	Linear  = 1,
+}
+
+Sampler_Address_Mode :: enum {
+	Repeat               = 0,
+	Mirrored_Repeat      = 1,
+	Clamp_To_Edge        = 2,
+	Clamp_To_Border      = 3,
+	Mirror_Clamp_To_Edge = 4,
+}
+
+Sampler_Lod_Clamp :: struct {
+	min: f32,
+	max: f32,
+}
+
+Sampler_Info :: struct {
+	mag_filter:        Sampler_Filter,
+	min_filter:        Sampler_Filter,
+	address_mode_u:    Sampler_Address_Mode,
+	address_mode_v:    Sampler_Address_Mode,
+	address_mode_w:    Sampler_Address_Mode,
+	anisotropy_enable: bool,
+	max_anisotropy:    f32,
+	border_color:      Sampler_Border_Color,
+	mipmap_mode:       Sampler_Filter,
+	lod_clamp:         Sampler_Lod_Clamp,
 }
 
 TextureEncoding :: enum {
@@ -448,7 +486,7 @@ Surface :: struct {
 	color_attachment: Maybe(Surface_Color_Attachment),
 	depth_attachment: Maybe(Surface_Depth_Attachment),
 	sample_count:     Sample_Count_Flag,
-	anisotropy:       f32,
+	sampler_info:     Sampler_Info,
 }
 
 Surface_Color_Attachment :: struct {

@@ -37,3 +37,20 @@ TEMP_POOL_MATERIAL_SIZE :: 100
 TEMP_POOL_TRANSFORM_SIZE :: 100
 
 MAX_SLOT_COUNT :: 10
+
+SAMPLER_LOD_CLAMP_NONE :: Sampler_Lod_Clamp {
+	min = 0,
+	max = vk.LOD_CLAMP_NONE,
+}
+
+DEFAULT_SAMPLER_INFO :: Sampler_Info {
+	mag_filter        = .Linear,
+	min_filter        = .Linear,
+	address_mode_u    = .Repeat,
+	address_mode_v    = .Repeat,
+	address_mode_w    = .Repeat,
+	anisotropy_enable = false,
+	border_color      = .Transparent_Black,
+	mipmap_mode       = .Linear,
+	lod_clamp         = SAMPLER_LOD_CLAMP_NONE,
+}

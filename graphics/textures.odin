@@ -12,6 +12,7 @@ create_texture :: proc(
 	mip_levels: u32 = 0,
 	anisotropy: f32 = 1,
 	encoding: TextureEncoding = .sRGB,
+	sampler_info: Sampler_Info = DEFAULT_SAMPLER_INFO,
 	loc := #caller_location,
 ) -> Texture {
 	assert_gfx_ctx(loc)
@@ -82,31 +83,8 @@ create_texture :: proc(
 
 	end_single_cmd(sc)
 
-	// Image View
 	image_view := _create_image_view(vk_image, format, {.COLOR}, mip_levels)
-
-	// Sampler
-	sampler_info := vk.SamplerCreateInfo {
-		sType                   = .SAMPLER_CREATE_INFO,
-		magFilter               = .LINEAR,
-		minFilter               = .LINEAR,
-		addressModeU            = .REPEAT,
-		addressModeV            = .REPEAT,
-		addressModeW            = .REPEAT,
-		anisotropyEnable        = true,
-		maxAnisotropy           = anisotropy,
-		borderColor             = .INT_OPAQUE_BLACK,
-		unnormalizedCoordinates = false,
-		compareEnable           = false,
-		compareOp               = .ALWAYS,
-		mipmapMode              = .LINEAR,
-		mipLodBias              = 0.0,
-		minLod                  = 0.0,
-		maxLod                  = cast(f32)mip_levels,
-	}
-
-	sampler: vk.Sampler
-	must(vk.CreateSampler(ctx.vulkan_state.device, &sampler_info, nil, &sampler))
+	sampler: vk.Sampler = create_sampler(sampler_info)
 
 	return Texture {
 		name = name,
@@ -122,7 +100,7 @@ create_texture :: proc(
 destroy_texture :: proc(texture: ^Texture, loc := #caller_location) {
 	assert_not_nil(texture, loc)
 
-	vk.DestroySampler(ctx.vulkan_state.device, texture.sampler, nil)
+	destroy_sampler(texture.sampler)
 	vk.DestroyImageView(ctx.vulkan_state.device, texture.view, nil)
 	vma.DestroyImage(ctx.vulkan_state.allocator, texture.image, texture.allocation)
 
@@ -130,6 +108,99 @@ destroy_texture :: proc(texture: ^Texture, loc := #caller_location) {
 	texture.view = 0
 	texture.image = 0
 	texture.allocation_info = {}
+}
+
+create_sampler :: proc(info: Sampler_Info, loc := #caller_location) -> Sampler {
+	max_anisotropy: f32 = ---
+	if info.anisotropy_enable && info.max_anisotropy == 0 {
+		max_anisotropy = ctx.limits.max_sampler_anisotropy
+	} else {
+		max_anisotropy = math.clamp(info.max_anisotropy, 0, ctx.limits.max_sampler_anisotropy)
+	}
+
+	sampler_info := vk.SamplerCreateInfo {
+		sType                   = .SAMPLER_CREATE_INFO,
+		magFilter               = _sampler_filter_to_vk(info.mag_filter),
+		minFilter               = _sampler_filter_to_vk(info.min_filter),
+		addressModeU            = _sampler_address_mode_to_vk(info.address_mode_u),
+		addressModeV            = _sampler_address_mode_to_vk(info.address_mode_v),
+		addressModeW            = _sampler_address_mode_to_vk(info.address_mode_w),
+		anisotropyEnable        = cast(b32)info.anisotropy_enable,
+		maxAnisotropy           = max_anisotropy,
+		borderColor             = _sampler_border_color_to_vk(info.border_color),
+		unnormalizedCoordinates = false,
+		compareEnable           = false,
+		compareOp               = .ALWAYS,
+		mipmapMode              = _sampler_filter_to_vk_mipmap_mode(info.mipmap_mode),
+		mipLodBias              = 0.0,
+		minLod                  = info.lod_clamp.min,
+		maxLod                  = info.lod_clamp.max,
+	}
+
+	sampler: Sampler
+	must(vk.CreateSampler(ctx.vulkan_state.device, &sampler_info, nil, &sampler))
+
+	return sampler
+}
+
+destroy_sampler :: proc(sampler: Sampler) {
+	vk.DestroySampler(ctx.vulkan_state.device, sampler, nil)
+}
+
+@(private)
+_sampler_filter_to_vk :: proc(f: Sampler_Filter) -> vk.Filter {
+	switch f {
+	case .Nearest:
+		return .NEAREST
+	case .Linear:
+		return .LINEAR
+	}
+
+	return .NEAREST
+}
+
+@(private)
+_sampler_filter_to_vk_mipmap_mode :: proc(f: Sampler_Filter) -> vk.SamplerMipmapMode {
+	switch f {
+	case .Nearest:
+		return .NEAREST
+	case .Linear:
+		return .LINEAR
+	}
+
+	return .NEAREST
+}
+
+@(private)
+_sampler_address_mode_to_vk :: proc(a: Sampler_Address_Mode) -> vk.SamplerAddressMode {
+	switch a {
+	case .Repeat:
+		return .REPEAT
+	case .Mirrored_Repeat:
+		return .MIRRORED_REPEAT
+	case .Clamp_To_Edge:
+		return .CLAMP_TO_EDGE
+	case .Clamp_To_Border:
+		return .CLAMP_TO_BORDER
+	case .Mirror_Clamp_To_Edge:
+		return .MIRROR_CLAMP_TO_EDGE
+	}
+
+	return .REPEAT
+}
+
+@(private)
+_sampler_border_color_to_vk :: proc(b: Sampler_Border_Color) -> vk.BorderColor {
+	switch b {
+	case .Transparent_Black:
+		return .FLOAT_TRANSPARENT_BLACK
+	case .Opaque_Black:
+		return .FLOAT_OPAQUE_BLACK
+	case .Opaque_White:
+		return .FLOAT_OPAQUE_WHITE
+	}
+
+	return .FLOAT_TRANSPARENT_BLACK
 }
 
 @(private)

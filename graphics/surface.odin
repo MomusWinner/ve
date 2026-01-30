@@ -18,7 +18,7 @@ create_surface_fit_screen :: proc(
 ) -> Surface_Handle {
 	assert_gfx_ctx(loc)
 	surface := Surface{}
-	_surface_init_fit_screen(&surface, sample_count, anisotropy)
+	_surface_init_fit_screen(&surface, sample_count)
 
 	return _surface_manager_add_surface(ctx.surface_manager, surface)
 }
@@ -26,14 +26,13 @@ create_surface_fit_screen :: proc(
 create_surface_with_size :: proc(
 	width, height: u32,
 	sample_count: Sample_Count_Flag = ._1,
-	anisotropy: f32 = 1,
 	allocator := context.allocator,
 	loc := #caller_location,
 ) -> Surface_Handle {
 	assert_gfx_ctx(loc)
 	assert(width > 0 && height > 0, "Surface dimensions must be greater than zero", loc)
 	surface := Surface{}
-	_surface_init_with_size(&surface, width, height, sample_count, anisotropy)
+	_surface_init_with_size(&surface, width, height, sample_count)
 
 	return _surface_manager_add_surface(ctx.surface_manager, surface)
 }
@@ -54,6 +53,7 @@ get_surface :: proc(surface_h: Surface_Handle, loc := #caller_location) -> (^Sur
 surface_add_color_attachment :: proc(
 	surface: ^Surface,
 	clear_value: color = {0.01, 0.01, 0.01, 1.0},
+	sampler_info: Sampler_Info = DEFAULT_SAMPLER_INFO,
 	loc := #caller_location,
 ) -> Texture_Handle {
 	assert_gfx_ctx(loc)
@@ -65,7 +65,7 @@ surface_add_color_attachment :: proc(
 
 	color_attachment := Surface_Color_Attachment{}
 	if surface.sample_count == ._1 {
-		color_res := _create_surface_color_resolve_resource(w, h, surface.anisotropy, ctx.swapchain.color_format.format)
+		color_res := _create_surface_color_resolve_resource(w, h, ctx.swapchain.color_format.format, sampler_info)
 
 		color_attachment.texture_h = store_texture(color_res, loc)
 
@@ -81,7 +81,7 @@ surface_add_color_attachment :: proc(
 		}
 	} else {
 		msaa := _create_surface_color_resource(w, h, ctx.swapchain.color_format.format, surface.sample_count)
-		resolve := _create_surface_color_resolve_resource(w, h, surface.anisotropy, ctx.swapchain.color_format.format)
+		resolve := _create_surface_color_resolve_resource(w, h, ctx.swapchain.color_format.format, sampler_info)
 
 		color_attachment.texture_h = store_texture(resolve)
 		color_attachment.msaa_texture = msaa
@@ -101,6 +101,7 @@ surface_add_color_attachment :: proc(
 	}
 
 	surface.color_attachment = color_attachment
+	surface.sampler_info = sampler_info
 
 	return color_attachment.texture_h
 }
@@ -128,12 +129,14 @@ surface_add_depth_attachment :: proc(surface: ^Surface, clear_value: f32 = 1, lo
 			clearValue = vk.ClearValue{depthStencil = {clear_value, 0}},
 		},
 	}
+
 	surface.depth_attachment = depth_attachment
 }
 
 surface_add_readable_depth_attachment :: proc(
 	surface: ^Surface,
 	clear_value: f32 = 1,
+	sampler_info: Sampler_Info = DEFAULT_SAMPLER_INFO,
 	loc := #caller_location,
 ) -> Texture_Handle {
 	assert_not_nil(surface, loc)
@@ -145,7 +148,7 @@ surface_add_readable_depth_attachment :: proc(
 	depth_attachment := Surface_Readable_Depth_Attachment{}
 
 	sc := begin_single_cmd()
-	depth_resource := _create_surface_depth_resource_sampled(w, h, sc.cmd)
+	depth_resource := _create_surface_depth_resource_sampled(w, h, sc.cmd, sampler_info)
 	depth_attachment.texture_h = store_texture(depth_resource)
 
 	if surface.sample_count == ._1 {
@@ -177,6 +180,7 @@ surface_add_readable_depth_attachment :: proc(
 	end_single_cmd(sc)
 
 	surface.depth_attachment = depth_attachment
+	surface.sampler_info = sampler_info
 
 	return depth_attachment.texture_h
 }
@@ -459,7 +463,6 @@ _surface_manager_resize_fit_screen_surfaces :: proc(sm: ^Surface_Manager, loc :=
 _surface_init_fit_screen :: proc(
 	surface: ^Surface,
 	sample_count: Sample_Count_Flag,
-	anisotropy: f32,
 	allocator := context.allocator,
 	loc := #caller_location,
 ) {
@@ -473,7 +476,6 @@ _surface_init_fit_screen :: proc(
 	common.init_trf(&surface.transform)
 
 	surface.sample_count = sample_count
-	surface.anisotropy = anisotropy
 }
 
 @(private)
@@ -481,7 +483,6 @@ _surface_init_with_size :: proc(
 	surface: ^Surface,
 	width, height: u32,
 	sample_count: Sample_Count_Flag,
-	anisotropy: f32,
 	allocator := context.allocator,
 	loc := #caller_location,
 ) {
@@ -494,7 +495,6 @@ _surface_init_with_size :: proc(
 	common.init_trf(&surface.transform)
 
 	surface.sample_count = sample_count
-	surface.anisotropy = anisotropy
 }
 
 @(private)
@@ -543,6 +543,7 @@ _surface_resize :: proc(surface: ^Surface, width, height: u32, loc := #caller_lo
 		switch &attachment in depth_attachment {
 		case Surface_Common_Depth_Attachment:
 			destroy_texture(&attachment.resource)
+			surface.depth_attachment = nil
 			surface_add_depth_attachment(surface)
 		case Surface_Readable_Depth_Attachment:
 			_surface_resize_readable_depth_attachment(width, height, surface)
@@ -589,8 +590,8 @@ _create_surface_color_resource :: proc(
 @(require_results)
 _create_surface_color_resolve_resource :: proc(
 	width, height: u32,
-	sampler_anisotropy: f32,
 	format: vk.Format,
+	sampler_info: Sampler_Info = DEFAULT_SAMPLER_INFO,
 	loc := #caller_location,
 ) -> Texture {
 	image, allocation, allocation_info := _create_image(
@@ -606,28 +607,7 @@ _create_surface_color_resolve_resource :: proc(
 	)
 
 	view := _create_image_view(image, format, {.COLOR}, 1)
-
-	sampler_info := vk.SamplerCreateInfo {
-		sType                   = .SAMPLER_CREATE_INFO,
-		magFilter               = .LINEAR,
-		minFilter               = .LINEAR,
-		addressModeU            = .REPEAT,
-		addressModeV            = .REPEAT,
-		addressModeW            = .REPEAT,
-		anisotropyEnable        = true,
-		maxAnisotropy           = sampler_anisotropy,
-		borderColor             = .INT_OPAQUE_BLACK,
-		unnormalizedCoordinates = false,
-		compareEnable           = false,
-		compareOp               = .ALWAYS,
-		mipmapMode              = .LINEAR,
-		mipLodBias              = 0.0,
-		minLod                  = 0.0,
-		maxLod                  = cast(f32)1,
-	}
-
-	sampler: vk.Sampler
-	must(vk.CreateSampler(ctx.vulkan_state.device, &sampler_info, nil, &sampler))
+	sampler: Sampler = create_sampler(sampler_info)
 
 	_set_debug_object_name(cast(u64)image, .IMAGE, "surface resolve image")
 	_set_debug_object_name(cast(u64)sampler, .SAMPLER, "surface resolve sampler")
@@ -688,6 +668,7 @@ _create_surface_depth_resource_sampled :: proc(
 	width: u32,
 	height: u32,
 	cmd: Command_Buffer,
+	sampler_info: Sampler_Info,
 	loc := #caller_location,
 ) -> Texture {
 	format := _find_depth_format(ctx.vulkan_state.physical_device)
@@ -704,25 +685,9 @@ _create_surface_depth_resource_sampled :: proc(
 	)
 
 	_transition_image_layout(cmd, image, {.DEPTH}, format, .UNDEFINED, .DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 1)
+
 	view := _create_image_view(image, format, {.DEPTH}, 1)
-
-	depth_sampler_info := vk.SamplerCreateInfo {
-		sType         = .SAMPLER_CREATE_INFO,
-		magFilter     = .LINEAR,
-		minFilter     = .LINEAR,
-		mipmapMode    = .LINEAR,
-		addressModeU  = .CLAMP_TO_BORDER,
-		addressModeV  = .CLAMP_TO_BORDER,
-		addressModeW  = .CLAMP_TO_BORDER,
-		mipLodBias    = 0,
-		maxAnisotropy = 1,
-		minLod        = 0,
-		maxLod        = 1,
-		borderColor   = .FLOAT_OPAQUE_WHITE,
-	}
-
-	sampler: vk.Sampler
-	vk.CreateSampler(ctx.vulkan_state.device, &depth_sampler_info, nil, &sampler)
+	sampler: Sampler = create_sampler(sampler_info)
 
 	_set_debug_object_name(cast(u64)image, .IMAGE, "surface depth msaa image")
 	_set_debug_object_name(cast(u64)view, .IMAGE_VIEW, "surface depth msaa view")
@@ -752,8 +717,8 @@ _surface_resize_color_attachment :: proc(width: u32, height: u32, surface: ^Surf
 	resolve := _create_surface_color_resolve_resource(
 		width,
 		height,
-		surface.anisotropy,
 		ctx.swapchain.color_format.format,
+		surface.sampler_info,
 	)
 	update_texture_h(color_attachment.texture_h, resolve)
 	color_attachment.info.imageView = resolve.view
@@ -788,7 +753,7 @@ _surface_resize_readable_depth_attachment :: proc(width: u32, height: u32, surfa
 
 	sc := begin_single_cmd()
 
-	resolve := _create_surface_depth_resource_sampled(width, height, sc.cmd)
+	resolve := _create_surface_depth_resource_sampled(width, height, sc.cmd, surface.sampler_info)
 	update_texture_h(attachment.texture_h, resolve)
 	attachment.info.imageView = resolve.view
 

@@ -54,6 +54,7 @@ create_light_scene :: proc() -> Scene {
 }
 
 light_scene_init :: proc(s: ^Scene) {
+	log.info(gfx.get_limits())
 	data := new(Lighting_Scene_Data)
 
 	// Init Camera
@@ -82,7 +83,16 @@ light_scene_init :: proc(s: ^Scene) {
 	data.shadow_map_surf = gfx.create_surface_with_size(DEPTH_SIZE, DEPTH_SIZE, ._1)
 	surface, _ := gfx.get_surface(data.shadow_map_surf)
 
-	data.shadow_map_texture = gfx.surface_add_readable_depth_attachment(surface)
+	data.shadow_map_texture = gfx.surface_add_readable_depth_attachment(
+		surface,
+		sampler_info = gfx.Sampler_Info {
+			mag_filter = .Linear,
+			min_filter = .Linear,
+			address_mode_u = .Clamp_To_Border,
+			address_mode_v = .Clamp_To_Border,
+			border_color = .Opaque_White,
+		},
+	)
 
 	data.light_data = create_ubo_light()
 	light_data, _ := gfx.get_uniform_buffer(data.light_data)

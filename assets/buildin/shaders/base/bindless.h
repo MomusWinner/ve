@@ -69,10 +69,9 @@ RegisterUniform(Camera, {
 #define getCamera() getCameraByHandle(PushConstants.camera)
 
 // HELPERS
-//
 const uint INVALID_RESOURCE_HANDLE = ~0u;
 
 #define isHandleValid(handle)\
-	(handle != INVALID_RESOURCE_INDEX)
+	(handle != INVALID_RESOURCE_HANDLE)
 
 #endif
