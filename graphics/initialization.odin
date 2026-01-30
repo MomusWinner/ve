@@ -33,6 +33,7 @@ init :: proc(init_info: Graphics_Init_Info, window: ^glfw.WindowHandle) {
 	ctx.cmd = _create_draw_command_buffers(ctx.vulkan_state) // TODO:
 	_init_limits()
 
+	_init_g_res_manager()
 	_init_pipeline_manager(ODIN_DEBUG)
 	_init_surface_manager()
 	_init_sync_obj()
@@ -57,6 +58,7 @@ destroy :: proc() {
 	_destroy_swapchain()
 	_destroy_pipeline_manager()
 	_destroy_surface_manager()
+	_destroy_g_res_manager()
 	_destroy_vulkan_state()
 
 	ctx = Graphics{}

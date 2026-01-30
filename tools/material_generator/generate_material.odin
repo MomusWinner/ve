@@ -99,11 +99,11 @@ generate_materials :: proc(
 	structures := parse_structures(pkg, loc)
 	context = c
 
-	generate_glsl(outpute_glsl_path, structures, loc)
+	generate_glsl(outpute_glsl_path, structures, pkg.name, loc)
 	generate_odin(outpute_odin_path, pkg.name, structures, gfx_package)
 }
 
-generate_glsl :: proc(path: string, structs: []Struct, loc := #caller_location) {
+generate_glsl :: proc(path: string, structs: []Struct, package_name: string, loc := #caller_location) {
 	f, ok := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0o644)
 	defer os.close(f)
 
@@ -111,9 +111,13 @@ generate_glsl :: proc(path: string, structs: []Struct, loc := #caller_location) 
 		error("Failed opening '%s' folder", path)
 	}
 
+	fmt.fprintfln(f, "#ifndef {0:s}\n#define {0:s}\n", fmt.tprintf("GEN_TYPES_%s_H", strings.to_upper(package_name)))
+
 	fmt.fprintln(f, "#include \"buildin:base/bindless.h\"\n")
 
 	for s in structs {
+		fmt.fprintfln(f, "// {0:s}", s.name)
+
 		glsl_struct_name, ok := strings.replace_all(s.name, "_", "")
 		assert(ok)
 		fmt.fprintfln(f, "RegisterUniform(%s, {{", glsl_struct_name)
@@ -123,7 +127,7 @@ generate_glsl :: proc(path: string, structs: []Struct, loc := #caller_location) 
 			fmt.fprintfln(f, "	%s %s;", field_type_to_glsl_type(field.type), field.name)
 		}
 
-		fmt.fprintfln(f, "}});")
+		fmt.fprintfln(f, "}});\n")
 
 		switch s.type {
 		case .None:
@@ -139,9 +143,12 @@ generate_glsl :: proc(path: string, structs: []Struct, loc := #caller_location) 
 			func_name, r_ok := strings.replace_all(glsl_struct_name, "Ubo", "")
 			func_name, r_ok = strings.replace_all(func_name, "UBO", "")
 
-			fmt.fprintfln(f, "#define getUbo{1:s}(index) GetResource({0:s}, index)", glsl_struct_name, func_name)
+			fmt.fprintfln(f, "#define getUbo{1:s}(handle) GetResource({0:s}, handle)", glsl_struct_name, func_name)
 		}
+		fmt.fprintfln(f, "\n")
 	}
+
+	fmt.fprint(f, "#endif")
 }
 
 generate_odin :: proc(

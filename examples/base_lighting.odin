@@ -21,10 +21,9 @@ Light_Ubo :: struct {
 
 @(material)
 Light_Material :: struct {
-	diffuse:    vec3,
-	ambient:    vec3,
-	specular:   vec3,
-	light_data: gfx.Buffer_Handle,
+	diffuse:  vec3,
+	ambient:  vec3,
+	specular: vec3,
 }
 
 Lighting_Scene_Data :: struct {
@@ -94,12 +93,12 @@ light_scene_init :: proc(s: ^Scene) {
 
 	mtrl_light_set_diffuse(light_material, {0.29, 0.478, 0.588})
 	mtrl_light_set_ambient(light_material, 0.1)
-	mtrl_light_set_light_data(light_material, light_data.buffer_h)
 
-	ubo_light_set_camera(light_data, data.l_camera._buffer_h)
+	ubo_light_set_camera(light_data, data.l_camera.buffer_h)
 	ubo_light_set_direction(light_data, {0, -1, 0})
 	ubo_light_set_shadow(light_data, data.shadow_map_texture)
 	ubo_light_set_color(light_data, 1)
+	assert(gfx.g_resource_set_slot(0, data.light_data))
 
 	gfx.model_set_material(&data.model, light_material_h)
 

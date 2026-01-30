@@ -52,7 +52,7 @@ camera_init :: proc(camera: ^Camera, type: Camera_Projection_Type = .Perspective
 	camera.dirty = true
 
 	buffer := create_uniform_buffer(size_of(Camera_UBO))
-	camera._buffer_h = store_buffer(buffer, loc)
+	camera.buffer_h = store_buffer(buffer, loc)
 }
 
 camera_get_up :: proc(camera: ^Camera, loc := #caller_location) -> vec3 {
@@ -182,7 +182,7 @@ _camera_get_buffer :: proc(camera: ^Camera, aspect: f32, loc := #caller_location
 	assert_not_nil(camera, loc)
 
 	if !camera.dirty && aspect == camera.last_aspect {
-		return camera._buffer_h
+		return camera.buffer_h
 	}
 
 	camera.last_aspect = aspect
@@ -190,7 +190,7 @@ _camera_get_buffer :: proc(camera: ^Camera, aspect: f32, loc := #caller_location
 	view := camera_get_view(camera)
 	projection := camera_get_projection(camera, aspect)
 
-	buffer := get_buffer_h(camera._buffer_h)
+	buffer := get_buffer_h(camera.buffer_h)
 	camera_ubo := Camera_UBO {
 		view       = view,
 		projection = projection,
@@ -199,5 +199,5 @@ _camera_get_buffer :: proc(camera: ^Camera, aspect: f32, loc := #caller_location
 	fill_buffer(buffer, size_of(Camera_UBO), &camera_ubo)
 	camera.dirty = false
 
-	return camera._buffer_h
+	return camera.buffer_h
 }

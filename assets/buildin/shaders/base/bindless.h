@@ -1,3 +1,6 @@
+#ifndef BUILDIN_BINDLESS_H
+#define BUILDIN_BINDLESS_H
+
 #extension GL_EXT_nonuniform_qualifier : enable
 
 #define BindlessDescriptorSet 0
@@ -33,13 +36,20 @@ layout(set = BindlessDescriptorSet, binding = BindlessSamplerBinding) \
     uniform samplerCube uGlobalTexturesCube[];
 
 
+const uint MAX_SLOT_COUNT = 10;
+
 layout( push_constant ) uniform constants {
 	mat4 model;
 	uint camera;
 	uint material;
-	uint pad0;
-	uint pad1;
+	uint reserve0;
+	uint reserve1;
+	uint reserve2;
+	uint reserve3;
+	uint[MAX_SLOT_COUNT] slots;
 } PushConstants;
+
+#define gHandle(slot) PushConstants.slots[slot]
 
 RegisterUniform(Model, {
 	mat4 model;
@@ -54,6 +64,15 @@ RegisterUniform(Camera, {
 	float pad0;
 });
 
-#define getCameraByIndex(index) GetResource(Camera, index)
+#define getCameraByHandle(index) GetResource(Camera, index)
 
-#define getCamera() getCameraByIndex(PushConstants.camera)
+#define getCamera() getCameraByHandle(PushConstants.camera)
+
+// HELPERS
+//
+const uint INVALID_RESOURCE_HANDLE = ~0u;
+
+#define isHandleValid(handle)\
+	(handle != INVALID_RESOURCE_INDEX)
+
+#endif

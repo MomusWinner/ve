@@ -222,6 +222,7 @@ draw_text :: proc(text: ^Text, frame_data: Frame_Data, camera: ^Camera, loc := #
 		model    = common.trf_get_matrix(text.transform),
 		camera   = _camera_get_buffer(camera, get_screen_aspect()).index,
 		material = material.buffer_h.index,
+		slots    = _g_res_manager_get_resource_indices(),
 	}
 	cmd_push_constants(frame_data, g_pipeline, &const)
 

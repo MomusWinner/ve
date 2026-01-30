@@ -71,6 +71,7 @@ draw_mesh :: proc(
 		model    = common.trf_get_matrix(transform),
 		camera   = _camera_get_buffer(camera, cast(f32)frame_data.surface_info.width / cast(f32)frame_data.surface_info.height).index,
 		material = material.buffer_h.index,
+		slots    = _g_res_manager_get_resource_indices(),
 	}
 
 	cmd_push_constants(frame_data, g_pipeline, &const)

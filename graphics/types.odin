@@ -79,6 +79,7 @@ Graphics :: struct {
 	material_manager:          ^Material_Manager,
 	pipeline_manager:          ^Pipeline_Manager,
 	surface_manager:           ^Surface_Manager,
+	g_res_manager:             ^Global_Resource_Manager,
 	descriptor_layout_manager: Descriptor_Layout_Manager,
 	temp_material_pool:        ^Temp_Material_Pool, // TODO: move to Temps struct
 	temp_transform_pool:       ^Temp_Transform_Pool,
@@ -120,6 +121,12 @@ Resource :: union {
 	Texture,
 	Buffer_Handle,
 	Texture_Handle,
+}
+
+Resource_Handle :: union {
+	Buffer_Handle,
+	Texture_Handle,
+	Uniform_Buffer_Handle,
 }
 
 Deferred_Destructor :: struct {
@@ -250,8 +257,11 @@ Push_Constant :: struct {
 	model:    mat4,
 	camera:   u32,
 	material: u32,
-	pad0:     u32,
-	pad1:     u32,
+	reserve0: u32,
+	reserve1: u32,
+	reserve2: u32,
+	reserve3: u32,
+	slots:    [MAX_SLOT_COUNT]u32,
 }
 
 Pipeline_Handle :: distinct hm.Handle
@@ -330,7 +340,7 @@ Camera :: struct {
 		projection: Camera_Custom_Projection_Proc,
 		user_data:  rawptr,
 	},
-	_buffer_h:   Buffer_Handle, // Camera_UBO
+	buffer_h:    Buffer_Handle, // Camera_UBO
 }
 
 // MODEL
