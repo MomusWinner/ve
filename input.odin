@@ -159,7 +159,7 @@ Key :: enum {
 
 KEYBOARD_MAX_KEY :: glfw.KEY_LAST
 
-MouseButton :: enum {
+Mouse_Button :: enum {
 	Left     = 0,
 	Right    = 1,
 	Middle   = 2,
@@ -185,15 +185,12 @@ key_is_released :: proc(key: Key) -> bool {
 	return ctx.input.keyboard.states[key] == glfw.RELEASE && ctx.input.keyboard.previous_states[key] == glfw.PRESS
 }
 
-key_is_just_pressed :: proc(button: Key) -> bool {
-	return ctx.input.keyboard.states[button] == glfw.PRESS && ctx.input.keyboard.previous_states[button] != glfw.PRESS
+key_is_just_pressed :: proc(key: Key) -> bool {
+	return ctx.input.keyboard.states[key] == glfw.PRESS && ctx.input.keyboard.previous_states[key] != glfw.PRESS
 }
 
-key_is_just_released :: proc(button: Key) -> bool {
-	return(
-		ctx.input.keyboard.states[button] == glfw.RELEASE &&
-		ctx.input.keyboard.previous_states[button] != glfw.RELEASE \
-	)
+key_is_just_released :: proc(key: Key) -> bool {
+	return ctx.input.keyboard.states[key] == glfw.RELEASE && ctx.input.keyboard.previous_states[key] != glfw.RELEASE
 }
 
 key_is_down :: proc(key: Key) -> bool {
@@ -212,27 +209,27 @@ mouse_get_delta :: proc() -> vec2 {
 	return (ctx.input.mouse.position - ctx.input.mouse.previouse_position) * mouse_get_scale()
 }
 
-mouse_button_is_pressed :: proc(button: MouseButton) -> bool {
+mouse_button_is_pressed :: proc(button: Mouse_Button) -> bool {
 	return ctx.input.mouse.states[button] == glfw.PRESS && ctx.input.mouse.previous_states[button] == glfw.RELEASE
 }
 
-mouse_button_is_released :: proc(button: MouseButton) -> bool {
+mouse_button_is_released :: proc(button: Mouse_Button) -> bool {
 	return ctx.input.mouse.states[button] == glfw.RELEASE && ctx.input.mouse.previous_states[button] == glfw.PRESS
 }
 
-mouse_button_is_just_pressed :: proc(button: MouseButton) -> bool {
+mouse_button_is_just_pressed :: proc(button: Mouse_Button) -> bool {
 	return ctx.input.mouse.states[button] == glfw.PRESS && ctx.input.mouse.previous_states[button] != glfw.PRESS
 }
 
-mouse_button_is_just_released :: proc(button: MouseButton) -> bool {
+mouse_button_is_just_released :: proc(button: Mouse_Button) -> bool {
 	return ctx.input.mouse.states[button] == glfw.RELEASE && ctx.input.mouse.previous_states[button] != glfw.RELEASE
 }
 
-mouse_button_is_down :: proc(button: MouseButton) -> bool {
+mouse_button_is_down :: proc(button: Mouse_Button) -> bool {
 	return ctx.input.mouse.states[button] == glfw.PRESS
 }
 
-mouse_button_is_up :: proc(button: MouseButton) -> bool {
+mouse_button_is_up :: proc(button: Mouse_Button) -> bool {
 	return ctx.input.mouse.states[button] == glfw.RELEASE
 }
 
