@@ -101,9 +101,15 @@ Resource_Handle :: union {
 	Texture,
 }
 
-Deferred_Destruction_Data :: struct {
-	resource: Resource,
-	location: runtime.Source_Code_Location,
+when ODIN_DEBUG {
+	Deferred_Destruction_Data :: struct {
+		resource: Resource,
+		location: runtime.Source_Code_Location,
+	}
+} else {
+	Deferred_Destruction_Data :: struct {
+		resource: Resource,
+	}
 }
 
 Deferred_Destructor :: struct {
@@ -1453,10 +1459,12 @@ _deferred_destructor_add :: proc(resource: Resource, loc := #caller_location) {
 		"Deferred destructor is full. Increase DEFERRED_DESTRUCTOR_SIZE.",
 		loc = loc,
 	)
-	d.resources[d.next_index] = {
+	entry := Deferred_Destruction_Data {
 		resource = resource,
-		location = loc,
 	}
+	when ODIN_DEBUG do entry.location = loc
+
+	d.resources[d.next_index] = entry
 	d.next_index += 1
 }
 
@@ -1474,7 +1482,7 @@ _destroy_deferred_destructor :: proc() {
 @(private = "file")
 _deferred_destructor_clear :: proc(d: ^Deferred_Destructor) {
 	for i in 0 ..< d.next_index {
-		loc := d.resources[i].location
+		loc := _deferred_destruction_location(d.resources[i])
 		switch &resource in d.resources[i].resource {
 		case Buffer_Data:
 			_destroy_buffer(&resource, loc)
@@ -1489,6 +1497,18 @@ _deferred_destructor_clear :: proc(d: ^Deferred_Destructor) {
 		}
 	}
 	d.next_index = 0
+}
+
+@(private = "file")
+_deferred_destruction_location :: #force_inline proc(
+	entry: Deferred_Destruction_Data,
+	loc := #caller_location,
+) -> runtime.Source_Code_Location {
+	when ODIN_DEBUG {
+		return entry.location
+	} else {
+		return loc
+	}
 }
 
 
