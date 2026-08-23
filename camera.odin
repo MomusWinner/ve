@@ -67,8 +67,8 @@ init_camera :: proc(camera: ^Camera, type: Camera_Projection_Type = .Perspective
 	camera.buffer = _store_buffer(buffer, loc)
 }
 
-destroy_camera :: proc(camera: ^Camera) {
-	destroy_buffer(camera.buffer)
+destroy_camera :: proc(camera: ^Camera, loc := #caller_location) {
+	destroy_buffer(camera.buffer, loc)
 }
 
 camera_get_up :: proc(camera: Camera, loc := #caller_location) -> vec3 {

@@ -70,22 +70,22 @@ destroy_render_target :: proc(render_target: ^Render_Target, loc := #caller_loca
 	depth_attachment, has_depth_attachment := render_target.depth_attachment.?
 
 	for ca in sm.slice(&render_target.color_attachments) {
-		t := _acquire_texture_h(ca.texture_h)
-		_destroy_texture(&t)
+		t := _acquire_texture_h(ca.texture_h, loc)
+		_destroy_texture(&t, loc)
 		msaa, has_msaa := ca.msaa_texture.?
-		if has_msaa do _destroy_texture(&msaa)
+		if has_msaa do _destroy_texture(&msaa, loc)
 	}
 
 	if has_depth_attachment {
 		switch &attachment in depth_attachment {
 		case Render_Target_Unreadable_Depth_Attachment:
-			_destroy_texture(&attachment.resource)
+			_destroy_texture(&attachment.resource, loc)
 		case Render_Target_Readable_Depth_Attachment:
-			t := _acquire_texture_h(attachment.texture_h)
-			_destroy_texture(&t)
+			t := _acquire_texture_h(attachment.texture_h, loc)
+			_destroy_texture(&t, loc)
 
 			msaa, has_msaa := attachment.msaa_texture.?
-			if has_msaa do _destroy_texture(&msaa)
+			if has_msaa do _destroy_texture(&msaa, loc)
 		}
 	}
 }
@@ -431,7 +431,7 @@ _render_target_resize :: proc(rt: ^Render_Target, width, height: int, loc := #ca
 		case Render_Target_Unreadable_Depth_Attachment:
 			has_stencil := _has_stencil_component(attachment.resource.format)
 
-			_destroy_texture(&attachment.resource)
+			_destroy_texture(&attachment.resource, loc)
 			rt.depth_attachment = nil
 
 			if has_stencil {
@@ -630,11 +630,11 @@ _render_target_resize_color_attachments :: proc(width: int, height: int, rt: ^Re
 			ca.sampler_info,
 			loc,
 		)
-		_replace_texture_h(ca.texture_h, resolve)
+		_replace_texture_h(ca.texture_h, resolve, loc)
 		ca.info.imageView = resolve.view
 
 		if has_msaa {
-			_destroy_texture(&msaa)
+			_destroy_texture(&msaa, loc)
 			new_msaa := _create_render_target_color_resource(w, h, texture_get_format(ca.texture_h), rt.sample_count)
 			ca.msaa_texture = new_msaa
 			ca.info.imageView = new_msaa.view
@@ -663,11 +663,11 @@ _render_target_resize_readable_depth_attachment :: proc(
 	sc := begin_single_cmd()
 
 	resolve := _create_render_target_depth_resource_sampled(w, h, sc.cmd, attachment.sampler_info, loc)
-	_replace_texture_h(attachment.texture_h, resolve)
+	_replace_texture_h(attachment.texture_h, resolve, loc)
 	attachment.info.imageView = resolve.view
 
 	if has_msaa {
-		_destroy_texture(&msaa)
+		_destroy_texture(&msaa, loc)
 		new_msaa := _create_render_target_depth_resource(w, h, sc.cmd, rt.sample_count, false)
 		attachment.msaa_texture = new_msaa
 		attachment.info.imageView = new_msaa.view

@@ -138,8 +138,8 @@ create_texture :: proc(
 }
 
 destroy_texture :: proc(texture: Texture, loc := #caller_location) {
-	t := _acquire_texture_h(texture)
-	_deferred_destructor_add(t)
+	t := _acquire_texture_h(texture, loc)
+	_deferred_destructor_add(t, loc)
 }
 
 texture_get_size :: proc(texture: Texture) -> (w: int, h: int) {

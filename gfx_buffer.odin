@@ -38,7 +38,7 @@ create_buffer :: proc(usage: Buffer_Usage_Flags, size: int, data: rawptr = nil, 
 }
 
 destroy_buffer :: proc(b: Buffer, loc := #caller_location) {
-	_deferred_destructor_add(b)
+	_deferred_destructor_add(b, loc)
 }
 
 buffer_fill :: proc(b: Buffer, size: int, data: rawptr, offset: int = 0, loc := #caller_location) {
@@ -73,11 +73,11 @@ ubo_is_valid :: proc(handle: Uniform_Buffer) -> bool {
 	return hm.has_handle(&ctx.gfx.buffer_manager.uniform_buffers, handle)
 }
 
-destroy_ubo :: proc(handle: Uniform_Buffer) -> bool {
+destroy_ubo :: proc(handle: Uniform_Buffer, loc := #caller_location) -> bool {
 	uniform_buffer, ok := hm.remove(&ctx.gfx.buffer_manager.uniform_buffers, handle)
 	if !ok do return false
 	free(uniform_buffer.data)
-	destroy_buffer(uniform_buffer.buffer)
+	destroy_buffer(uniform_buffer.buffer, loc)
 	return true
 }
 
@@ -100,10 +100,10 @@ sbo_get_data :: proc(handle: Storage_Buffer, loc := #caller_location) -> ^Storag
 	return b
 }
 
-destroy_sbo :: proc(handle: Storage_Buffer) -> bool {
+destroy_sbo :: proc(handle: Storage_Buffer, loc := #caller_location) -> bool {
 	storage_buffer, ok := hm.remove(&ctx.gfx.buffer_manager.storage_buffers, handle)
 	if !ok do return false
 	free(storage_buffer.data)
-	destroy_buffer(storage_buffer.buffer)
+	destroy_buffer(storage_buffer.buffer, loc)
 	return true
 }
