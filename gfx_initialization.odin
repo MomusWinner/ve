@@ -361,8 +361,6 @@ _create_logical_device :: proc() {
 		pNext                   = &features.features,
 		pQueueCreateInfos       = raw_data(queue_create_infos),
 		queueCreateInfoCount    = cast(u32)(len(queue_create_infos)),
-		enabledLayerCount       = cast(u32)len(ctx.gfx.vk_state.enabled_layer_names),
-		ppEnabledLayerNames     = raw_data(ctx.gfx.vk_state.enabled_layer_names),
 		ppEnabledExtensionNames = raw_data(DEVICE_EXTENSIONS),
 		enabledExtensionCount   = cast(u32)(len(DEVICE_EXTENSIONS)),
 	}
