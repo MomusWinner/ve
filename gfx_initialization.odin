@@ -533,6 +533,7 @@ _get_required_physical_device_features :: proc(features: ^Physical_Device_Featur
 	features.features13.dynamicRendering = true
 	features.features13.synchronization2 = true
 	features.features13.maintenance4 = true
+	features.features13.shaderDemoteToHelperInvocation = true
 
 	// FEATURES 1.2
 	features.features12.sType = .PHYSICAL_DEVICE_VULKAN_1_2_FEATURES
