@@ -187,7 +187,7 @@ load_cubemap_texture :: proc(
 		images[i] = image
 	}
 
-	texture := create_texture_cubemap(images, format, sampler_info, mip_levels)
+	texture := _create_texture_cubemap(images, format, sampler_info, mip_levels)
 
 	for &image in images {
 		destroy_image(image)
@@ -201,7 +201,19 @@ load_cubemap_texture :: proc(
 // 0: +X (right)   1: -X (left)
 // 2: +Y (top)     3: -Y (bottom)
 // 4: +Z (front)   5: -Z (back)
+@(require_results)
 create_texture_cubemap :: proc(
+	faces: [CUBEMAP_LAYER_COUNT]Image,
+	format: Pixel_Format,
+	sampler_info: Sampler_Info = DEFAULT_SAMPLER_INFO,
+	mip_levels: u32 = 1,
+	loc := #caller_location,
+) -> Texture {
+	return _store_texture(_create_texture_cubemap(faces, format, sampler_info, mip_levels, loc), loc)
+}
+
+@(private)
+_create_texture_cubemap :: proc(
 	faces: [CUBEMAP_LAYER_COUNT]Image,
 	format: Pixel_Format,
 	sampler_info: Sampler_Info = DEFAULT_SAMPLER_INFO,
