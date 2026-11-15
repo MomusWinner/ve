@@ -40,6 +40,22 @@ Vulkan_State :: struct {
 	descriptor_pool:          vk.DescriptorPool,
 }
 
+Device_Info :: struct {
+	name:               string,
+	vendor_id:          u32,
+	device_id:          u32,
+	driver_version_raw: u32,
+	driver_id:          string,
+	driver_name:        string,
+	driver_info:        string,
+}
+
+Vulkan_Info :: struct {
+	requested_api_version: string,
+	device_api_version:    string,
+	loader_api_version:    string,
+}
+
 Graphics_Limits :: struct {
 	max_sample_count:       Sample_Count_Flag,
 	max_sampler_anisotropy: f32,
@@ -66,6 +82,10 @@ Swapchain_Configuration :: struct {
 }
 
 Graphics :: struct {
+	device_info:               Device_Info,
+	vulkan_info:               Vulkan_Info,
+	device_info_ready:         bool,
+	device_info_allocator:     runtime.Allocator,
 	vk_state:                  Vulkan_State,
 	image_available_semaphore: vk.Semaphore,
 	fence:                     vk.Fence,
@@ -377,6 +397,14 @@ _get_cmd :: proc() -> Command_Buffer {return ctx.gfx.cmd}
 
 vk_state_get_info :: proc() -> Vulkan_State {
 	return ctx.gfx.vk_state
+}
+
+device_get_info :: proc() -> (info: Device_Info, ok: bool) {
+	return ctx.gfx.device_info, ctx.gfx.device_info_ready
+}
+
+vulkan_get_info :: proc() -> (info: Vulkan_Info, ok: bool) {
+	return ctx.gfx.vulkan_info, ctx.gfx.device_info_ready
 }
 
 begin_pass :: proc(loc := #caller_location) {
