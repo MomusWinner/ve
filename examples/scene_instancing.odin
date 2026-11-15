@@ -2,7 +2,6 @@ package main
 
 import ve ".."
 import "base:runtime"
-import "core:log"
 import "core:math"
 import "core:math/rand"
 
