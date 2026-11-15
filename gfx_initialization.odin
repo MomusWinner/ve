@@ -62,6 +62,7 @@ _init_vulkan_state :: proc() {
 	_create_instance()
 	_create_surface()
 	_pick_physical_device()
+	_init_device_info()
 	_create_logical_device()
 	_create_vma_allocator()
 	_create_descriptor_pool()
@@ -70,6 +71,7 @@ _init_vulkan_state :: proc() {
 
 @(private = "file")
 _destroy_vulkan_state :: proc() {
+	_destroy_device_info()
 	vma.DestroyAllocator(ctx.gfx.vk_state.allocator)
 	_destroy_command_pool()
 	_destroy_descriptor_pool()
@@ -78,6 +80,70 @@ _destroy_vulkan_state :: proc() {
 	_destroy_surface()
 	_destroy_instance()
 	delete(ctx.gfx.vk_state.enabled_layer_names)
+}
+
+@(private = "file")
+_init_device_info :: proc() {
+	properties := ctx.gfx.vk_state.physical_device_property
+	info := &ctx.gfx.device_info
+	info.name = strings.clone(string(cstring(&properties.deviceName[0])))
+	info.vendor_id = properties.vendorID
+	info.device_id = properties.deviceID
+	info.driver_version_raw = properties.driverVersion
+	versions := &ctx.gfx.vulkan_info
+	versions.requested_api_version = _device_info_version(VULKAN_API_VERSION)
+	versions.device_api_version = _device_info_version(properties.apiVersion)
+	loader_version := u32(vk.API_VERSION_1_0)
+	if vk.EnumerateInstanceVersion != nil {
+		if vk.EnumerateInstanceVersion(&loader_version) != .SUCCESS do loader_version = 0
+	}
+	if loader_version != 0 do versions.loader_api_version = _device_info_version(loader_version)
+
+	if properties.apiVersion >= vk.API_VERSION_1_2 && vk.GetPhysicalDeviceProperties2 != nil {
+		driver := vk.PhysicalDeviceDriverProperties {
+			sType = .PHYSICAL_DEVICE_DRIVER_PROPERTIES,
+		}
+		properties2 := vk.PhysicalDeviceProperties2 {
+			sType = .PHYSICAL_DEVICE_PROPERTIES_2,
+			pNext = &driver,
+		}
+		vk.GetPhysicalDeviceProperties2(ctx.gfx.vk_state.physical_device, &properties2)
+		info.driver_id = fmt.aprintf("%v", driver.driverID)
+		info.driver_name = strings.clone(string(cstring(&driver.driverName[0])))
+		info.driver_info = strings.clone(string(cstring(&driver.driverInfo[0])))
+	}
+	ctx.gfx.device_info_allocator = context.allocator
+	ctx.gfx.device_info_ready = true
+}
+
+@(private = "file")
+_destroy_device_info :: proc() {
+	info := ctx.gfx.device_info
+	versions := ctx.gfx.vulkan_info
+	values := []string {
+		info.name,
+		info.driver_id,
+		info.driver_name,
+		info.driver_info,
+		versions.requested_api_version,
+		versions.device_api_version,
+		versions.loader_api_version,
+	}
+	for value in values do delete(value, ctx.gfx.device_info_allocator)
+	ctx.gfx.device_info = {}
+	ctx.gfx.vulkan_info = {}
+	ctx.gfx.device_info_ready = false
+	ctx.gfx.device_info_allocator = {}
+}
+
+@(private = "file")
+_device_info_version :: proc(version: u32) -> string {
+	return fmt.aprintf(
+		"%d.%d.%d",
+		vk.API_VERSION_MAJOR(version),
+		vk.API_VERSION_MINOR(version),
+		vk.API_VERSION_PATCH(version),
+	)
 }
 
 @(private = "file")
