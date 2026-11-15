@@ -295,6 +295,23 @@ destroy_graphics_pipeline :: proc(pipeline: Graphics_Pipeline) -> bool {
 	return _destroy_graphics_pipeline_h(pipeline)
 }
 
+
+// TODO: need a procedure that returns full information about the graphics/compute pipeline
+graphics_pipeline_get_vertex_input :: proc(
+	pipeline: Graphics_Pipeline,
+	binding: u32,
+	loc := #caller_location,
+) -> (
+	Vertex_Input_Description,
+	bool,
+) {
+	data := _get_graphics_pipeline(pipeline, loc)
+	for input in sm.slice(&data.create_info.vertex_input_descriptions) {
+		if input.binding == binding do return input, true
+	}
+	return {}, false
+}
+
 @(require_results)
 create_compute_pipeline :: proc(create_pipeline_info: Create_Compute_Pipeline_Info) -> Compute_Pipeline {
 	pipeline := _create_compute_pipeline(create_pipeline_info, context.allocator)
