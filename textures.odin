@@ -137,6 +137,18 @@ create_texture :: proc(
 	return _store_texture(_create_texture(image, format, sampler_info, mip_levels, loc), loc)
 }
 
+texture_upload_image :: proc(
+	texture: Texture,
+	image: Image,
+	format: Pixel_Format,
+	sampler_info: Sampler_Info = DEFAULT_SAMPLER_INFO,
+	mip_levels: u32 = 1,
+	loc := #caller_location,
+) {
+	data := _create_texture(image, format, sampler_info, mip_levels, loc)
+	_replace_texture_h(texture, data, loc)
+}
+
 destroy_texture :: proc(texture: Texture, loc := #caller_location) {
 	t := _acquire_texture_h(texture, loc)
 	_deferred_destructor_add(t, loc)
